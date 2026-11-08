@@ -81,6 +81,22 @@ public class PyqService {
             """,branch,branch,curriculum,curriculum);
     }
 
+    public List<Map<String,Object>> listAdminPapers() {
+        return jdbc.queryForList("""
+            SELECT id,title,exam_year AS "examYear",branch,curriculum,paper_type AS "paperType",
+                   storage_path AS "storagePath",public_url AS "publicUrl",source_name AS "sourceName",
+                   attribution,active,created_at AS "createdAt"
+            FROM pyq_papers ORDER BY exam_year DESC,paper_type,branch
+            """);
+    }
+
+    @Transactional
+    public Map<String,Object> setPaperActive(UUID paperId, boolean active) {
+        int changed = jdbc.update("UPDATE pyq_papers SET active=? WHERE id=?",active,paperId);
+        if (changed == 0) throw notFound("PYQ paper not found.");
+        return Map.of("id",paperId,"active",active);
+    }
+
     @Transactional
     public Map<String,Object> startAttempt(String email) {
         UUID student = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?) AND role='STUDENT'",UUID.class,email);
