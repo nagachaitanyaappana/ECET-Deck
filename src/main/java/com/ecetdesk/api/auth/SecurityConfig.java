@@ -21,58 +21,31 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
+    @Bean DaoAuthenticationProvider authenticationProvider(CustomUserDetailsService users,PasswordEncoder encoder) {
+        DaoAuthenticationProvider provider=new DaoAuthenticationProvider(users); provider.setPasswordEncoder(encoder); return provider;
     }
-
-    @Bean
-    DaoAuthenticationProvider authenticationProvider(CustomUserDetailsService users, PasswordEncoder encoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
-        provider.setPasswordEncoder(encoder);
-        return provider;
-    }
-
-    @Bean
-    AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+    @Bean AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception { return configuration.getAuthenticationManager(); }
+    @Bean CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration=new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(false);
-        configuration.setMaxAge(3600L);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        configuration.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
+        configuration.setAllowedHeaders(List.of("*")); configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowCredentials(false); configuration.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source=new UrlBasedCorsConfigurationSource(); source.registerCorsConfiguration("/**",configuration); return source;
     }
-
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
-                                            DaoAuthenticationProvider provider) throws Exception {
-        return http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(provider)
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/error", "/", "/db", "/db/**", "/api/v1/health", "/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/pyq/papers").hasAnyRole("STUDENT", "ADMIN")
-                        .requestMatchers("/api/v1/pyq/**").hasRole("STUDENT")
-                        .requestMatchers("/api/v1/my/**").hasRole("STUDENT")
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http,JwtAuthenticationFilter jwtFilter,DaoAuthenticationProvider provider) throws Exception {
+        return http.cors(cors->cors.configurationSource(corsConfigurationSource())).csrf(csrf->csrf.disable())
+            .formLogin(form->form.disable()).httpBasic(basic->basic.disable())
+            .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(provider).exceptionHandling(ex->ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            .authorizeHttpRequests(auth->auth
+                .requestMatchers("/error","/","/db","/db/**","/api/v1/health","/actuator/health").permitAll()
+                .requestMatchers(HttpMethod.POST,"/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET,"/api/v1/pyq/papers").hasAnyRole("STUDENT","ADMIN")
+                .requestMatchers("/api/v1/pyq/**").hasRole("STUDENT")
+                .requestMatchers("/api/v1/my/**").hasRole("STUDENT").anyRequest().authenticated())
+            .addFilterBefore(jwtFilter,UsernamePasswordAuthenticationFilter.class).build();
     }
 }
