@@ -64,6 +64,27 @@ public class AssessmentService {
         return Map.of("id",id,"subject",r.subject(),"questionText",r.questionText(),"optionCount",4);
     }
 
+    public Map<String,Object> getAdminTest(UUID testId) {
+        Map<String,Object> test = test(testId);
+        List<Map<String,Object>> questions = jdbc.queryForList("""
+            SELECT q.id,q.subject,q.question_text AS "questionText",q.explanation,q.difficulty,
+                   tq.question_order AS "questionOrder"
+            FROM test_questions tq JOIN questions q ON q.id=tq.question_id
+            WHERE tq.test_id=? ORDER BY tq.question_order
+            """,testId);
+        for (var question : questions) {
+            question.put("options",jdbc.queryForList("""
+                SELECT id,option_label AS label,option_text AS text,is_correct AS correct
+                FROM question_options WHERE question_id=? ORDER BY option_label
+                """,question.get("id")));
+        }
+        Map<String,Object> result=new LinkedHashMap<>(test);
+        result.put("questions",questions);
+        result.put("subjectAllocations",jdbc.queryForList(
+            "SELECT subject,question_count AS \"questionCount\" FROM test_subject_allocations WHERE test_id=?",testId));
+        return result;
+    }
+
     @Transactional
     public Map<String,Object> addQuestion(UUID testId, UUID questionId) {
         Map<String,Object> test = test(testId);
