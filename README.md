@@ -6,7 +6,7 @@ Spring Boot backend for ECET Desk, a private daily ECET practice platform for a 
 
 Initial backend foundation:
 - Spring Boot 3.5 / Java 21 / Maven
-- PostgreSQL connectivity through environment variables
+- PostgreSQL connectivity from a workspace-root `.env` file
 - Flyway-managed `app` schema
 - Initial `app.users` table
 - Health endpoint: `GET /api/v1/health`
@@ -17,35 +17,45 @@ Authentication, test management, AI question generation, examination attempts an
 ## Requirements
 
 - JDK 21
-- Maven 3.9+ (or use the Maven wrapper once generated locally)
+- Maven 3.9+ (or Maven Wrapper, if present)
 - PostgreSQL database
 
-## Configure database
+## Configure the workspace .env file
 
-Set these environment variables before starting the application:
+1. In the repository root (the same folder as `pom.xml`), copy `.env.example` to a new file named `.env`.
+2. Open `.env` and fill in your Supabase Session Pooler details.
 
-| Variable | Example |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/ecet_desk` |
-| `DB_USERNAME` | Your PostgreSQL username |
-| `DB_PASSWORD` | Your PostgreSQL password |
+Example:
 
-For Supabase Session Pooler, use the host, port, database and username from the Supabase **Connect** panel. The JDBC URL should follow this format:
-
-```
-jdbc:postgresql://YOUR_SESSION_POOLER_HOST:5432/postgres?sslmode=require
+```properties
+DB_URL=jdbc:postgresql://YOUR_SESSION_POOLER_HOST:5432/postgres?sslmode=require
+DB_USERNAME=YOUR_SUPABASE_POOLER_USERNAME
+DB_PASSWORD=YOUR_SUPABASE_DATABASE_PASSWORD
 ```
 
-Use the exact pooler username Supabase provides. Never commit credentials or paste them into source files.
+Use the exact host and username shown by Supabase under **Connect → Session pooler**. Do not add quotes around the values. Keep the password private.
+
+Spring Boot loads this file from the process working directory using its config import support. Start Maven from the repository root so it finds the workspace `.env` file.
+
+### Git safety
+
+The root `.gitignore` explicitly ignores:
+- `.env`
+- Other `.env.*` files
+
+It makes one exception for `.env.example`, which contains placeholders only. Before committing, you can verify that your real file is ignored with:
+
+```powershell
+git check-ignore .env
+```
+
+The command should print `.env`. Never force-add the real `.env` file.
 
 ## Run
 
-Windows PowerShell:
+Open a terminal in the repository root and run:
 
 ```powershell
-$env:DB_URL = "jdbc:postgresql://YOUR_HOST:5432/postgres?sslmode=require"
-$env:DB_USERNAME = "YOUR_POOLER_USERNAME"
-$env:DB_PASSWORD = "YOUR_DATABASE_PASSWORD"
 mvn spring-boot:run
 ```
 
