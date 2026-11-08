@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../api/client';
-import type { AvailableTest, StudentResultSummary } from '../../types';
-import { Clock, CheckCircle2, XCircle, HelpCircle, ArrowRight, BookOpen, Award, AlertCircle } from 'lucide-react';
+import type { AvailableTest, StudentResultSummary, GrandTestRequest, FeedbackItem } from '../../types';
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
+  ArrowRight,
+  BookOpen,
+  Award,
+  AlertCircle,
+  Zap,
+  MessageSquare,
+  Send,
+  Sparkles
+} from 'lucide-react';
 
 interface StudentDashboardProps {
   onStartTest: (attemptId: string) => void;
@@ -12,12 +25,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onStartTest,
   onReviewAttempt,
 }) => {
-  const [tab, setTab] = useState<'available' | 'results'>('available');
+  const [tab, setTab] = useState<'available' | 'results' | 'request' | 'feedback'>('available');
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [results, setResults] = useState<StudentResultSummary[]>([]);
+  const [requests, setRequests] = useState<GrandTestRequest[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startingTestId, setStartingTestId] = useState<string | null>(null);
+
+  // Request form state
+  const [requestNote, setRequestNote] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
+
+  // Feedback form state
+  const [fbCategory, setFbCategory] = useState<'GENERAL' | 'QUESTION_ERROR' | 'FEATURE_REQUEST' | 'BUG'>('GENERAL');
+  const [fbSubject, setFbSubject] = useState('');
+  const [fbMessage, setFbMessage] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -30,9 +58,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (tab === 'available') {
         const data = await apiRequest<AvailableTest[]>('/api/v1/tests');
         setTests(data);
-      } else {
+      } else if (tab === 'results') {
         const data = await apiRequest<StudentResultSummary[]>('/api/v1/my/results');
         setResults(data);
+      } else if (tab === 'request') {
+        const data = await apiRequest<GrandTestRequest[]>('/api/v1/requests/grand-test');
+        setRequests(data);
+      } else if (tab === 'feedback') {
+        const data = await apiRequest<FeedbackItem[]>('/api/v1/feedbacks');
+        setFeedbacks(data);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
@@ -55,6 +89,56 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       setStartingTestId(null);
     }
   };
+
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingRequest(true);
+    setError(null);
+    setRequestSuccess(null);
+    try {
+      await apiRequest('/api/v1/requests/grand-test', {
+        method: 'POST',
+        body: JSON.stringify({ note: requestNote }),
+      });
+      setRequestSuccess('Grand Test request submitted! The admin has been notified to generate your 200-question paper.');
+      setRequestNote('');
+      const data = await apiRequest<GrandTestRequest[]>('/api/v1/requests/grand-test');
+      setRequests(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit Grand Test request');
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fbSubject.trim() || !fbMessage.trim()) return;
+    setSubmittingFeedback(true);
+    setError(null);
+    setFeedbackSuccess(null);
+    try {
+      await apiRequest('/api/v1/feedbacks', {
+        method: 'POST',
+        body: JSON.stringify({
+          category: fbCategory,
+          subject: fbSubject.trim(),
+          message: fbMessage.trim(),
+        }),
+      });
+      setFeedbackSuccess('Thank you! Your feedback has been submitted to the admin.');
+      setFbSubject('');
+      setFbMessage('');
+      const data = await apiRequest<FeedbackItem[]>('/api/v1/feedbacks');
+      setFeedbacks(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to submit feedback');
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
+  const pendingRequest = requests.find((r) => r.status === 'PENDING');
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
@@ -88,7 +172,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         <button
           onClick={() => setTab('results')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'results'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -101,6 +185,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               {results.length}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => setTab('request')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+            tab === 'request'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-500" />
+          Request Grand Test
+          {pendingRequest && (
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setTab('feedback')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+            tab === 'feedback'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-indigo-500" />
+          Feedback & Suggestions
         </button>
       </div>
 
@@ -184,7 +295,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             ))}
           </div>
         )
-      ) : (
+      ) : tab === 'results' ? (
         /* Results Tab */
         results.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
@@ -268,6 +379,293 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             })}
           </div>
         )
+      ) : tab === 'request' ? (
+        <div className="space-y-6">
+          {/* Explanation Box */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-amber-600" /> Full Mock Simulation
+              </span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 mb-1">
+              Ready for the 200-Question Grand Test?
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
+              Daily mocks run everyday to keep you sharp. When you and your friends feel prepared across the entire syllabus (100 DCME, 50 Math, 25 Physics, 25 Chemistry • 180 Minutes), submit a request below. The admin will review and generate a full AI Grand Test paper!
+            </p>
+          </div>
+
+          {requestSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-sm text-emerald-800">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>{requestSuccess}</span>
+            </div>
+          )}
+
+          {/* Active / Pending Request Card */}
+          {pendingRequest ? (
+            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold bg-amber-200/80 text-amber-900 px-3 py-1 rounded-full flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> Pending Admin Review
+                </span>
+                <span className="text-xs text-amber-800">
+                  Requested on {new Date(pendingRequest.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <h3 className="font-bold text-slate-900 text-base mb-1">
+                Grand Test Request Active
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-700 mb-2">
+                Your request has been queued for the admin. As soon as the admin clicks to generate the paper, it will appear in your <strong>Available Tests</strong>.
+              </p>
+              {pendingRequest.note && (
+                <div className="mt-3 bg-white/80 border border-amber-200/60 rounded-xl p-3 text-xs text-slate-700">
+                  <span className="font-semibold text-slate-900">Your note: </span>
+                  {pendingRequest.note}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Request Submission Form */
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <h3 className="font-bold text-slate-900 text-base mb-2 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                Submit New Grand Test Request
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                You can add an optional note for the admin (e.g. topics you want emphasized, or when your group plans to write the test).
+              </p>
+
+              <form onSubmit={handleCreateRequest} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Readiness Note / Special Topic Requests (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Our group is ready for Grand Test! Please emphasize Computer Networks, DBMS normalization, and Calculus."
+                    value={requestNote}
+                    onChange={(e) => setRequestNote(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white transition-all"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingRequest}
+                  className="py-3 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                >
+                  {submittingRequest ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Submitting Request...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      Request Grand Test (200 Questions)
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Past Requests History */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-bold text-slate-900 text-sm mb-4">
+              Your Request History ({requests.length})
+            </h3>
+            {requests.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">No past requests submitted yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {requests.map((req) => (
+                  <div key={req.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
+                            req.status === 'PENDING'
+                              ? 'bg-amber-100 text-amber-800'
+                              : req.status === 'FULFILLED'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {req.status}
+                        </span>
+                        <span className="text-slate-400">
+                          {new Date(req.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {req.note && <p className="text-slate-700 mt-1">{req.note}</p>}
+                      {req.generatedTestTitle && (
+                        <p className="text-emerald-700 font-semibold mt-1">
+                          Generated: {req.generatedTestTitle}
+                        </p>
+                      )}
+                    </div>
+
+                    {req.status === 'FULFILLED' && req.generatedTestId && (
+                      <button
+                        onClick={() => {
+                          setTab('available');
+                        }}
+                        className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors self-start sm:self-auto cursor-pointer"
+                      >
+                        View in Available Tests
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* TAB: Feedback */
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-indigo-600" />
+              Student Feedback & Issue Reports
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Found a mistake in a question or explanation? Have an idea to make practice smoother? Send your suggestions directly to the admin.
+            </p>
+          </div>
+
+          {feedbackSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-sm text-emerald-800">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>{feedbackSuccess}</span>
+            </div>
+          )}
+
+          {/* Feedback Form */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-bold text-slate-900 text-sm mb-4">
+              Submit New Feedback
+            </h3>
+
+            <form onSubmit={handleSubmitFeedback} className="space-y-4">
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Category
+                  </label>
+                  <select
+                    value={fbCategory}
+                    onChange={(e: any) => setFbCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option value="QUESTION_ERROR">Question Error / Typo</option>
+                    <option value="FEATURE_REQUEST">Feature Request</option>
+                    <option value="BUG">Bug / App Issue</option>
+                    <option value="GENERAL">General Feedback</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Subject / Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Question 12 option B explanation was incorrect"
+                    value={fbSubject}
+                    onChange={(e) => setFbSubject(e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Detailed Message
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Describe what happened, what could be improved, or why the question was flawed..."
+                  value={fbMessage}
+                  onChange={(e) => setFbMessage(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingFeedback}
+                className="py-2.5 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+              >
+                {submittingFeedback ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send Feedback
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Past Feedback History */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-bold text-slate-900 text-sm mb-4">
+              Your Feedback History ({feedbacks.length})
+            </h3>
+            {feedbacks.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">No feedback submitted yet.</p>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {feedbacks.map((fb) => (
+                  <div key={fb.id} className="py-4 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700">
+                          {fb.category.replace('_', ' ')}
+                        </span>
+                        <span
+                          className={`font-bold px-2 py-0.5 rounded-md text-[10px] ${
+                            fb.status === 'RESOLVED'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : fb.status === 'REVIEWED'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {fb.status}
+                        </span>
+                      </div>
+                      <span className="text-slate-400 text-[11px]">
+                        {new Date(fb.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <h4 className="font-bold text-slate-900 text-sm">{fb.subject}</h4>
+                    <p className="text-slate-600 leading-relaxed">{fb.message}</p>
+
+                    {fb.adminNotes && (
+                      <div className="mt-2 bg-indigo-50/70 border border-indigo-200/60 rounded-xl p-3 text-xs text-indigo-950">
+                        <span className="font-bold text-indigo-900 block mb-0.5">Admin Response:</span>
+                        {fb.adminNotes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

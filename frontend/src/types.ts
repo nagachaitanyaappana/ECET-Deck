@@ -119,3 +119,28 @@ export interface LeaderboardEntry {
   totalCorrect: number;
   totalIncorrect: number;
 }
+
+export interface GrandTestRequest {
+  id: string;
+  status: 'PENDING' | 'FULFILLED' | 'DISMISSED';
+  note?: string;
+  generatedTestId?: string;
+  generatedTestTitle?: string;
+  studentName?: string;
+  studentEmail?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface FeedbackItem {
+  id: string;
+  category: 'GENERAL' | 'QUESTION_ERROR' | 'FEATURE_REQUEST' | 'BUG';
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'REVIEWED' | 'RESOLVED';
+  adminNotes?: string;
+  userName?: string;
+  userEmail?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
