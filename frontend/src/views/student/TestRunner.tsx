@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../../api/client';
 import type { AttemptDetail, TestQuestion } from '../../types';
 import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle, Menu, X } from 'lucide-react';
@@ -19,25 +19,20 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPaletteMobile, setShowPaletteMobile] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const autoSubmitStarted = useRef(false);
 
   useEffect(() => {
     loadAttempt();
   }, [attemptId]);
 
-  // Timer counter
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const loadAttempt = async () => {
     setLoading(true);
     try {
+      autoSubmitStarted.current = false;
       const data = await apiRequest<AttemptDetail>(`/api/v1/attempts/${attemptId}`);
       setAttempt(data);
+      setRemainingSeconds(data.durationMinutes > 0 ? data.durationMinutes * 60 : 0);
 
       // Pre-fill answers from server
       const initialAnswers: Record<string, string> = {};
@@ -73,6 +68,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
   };
 
   const handleSubmit = async () => {
+    autoSubmitStarted.current = true;
     setSubmitting(true);
     try {
       await apiRequest(`/api/v1/attempts/${attemptId}/submit`, {
@@ -82,9 +78,36 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
     } catch (err: any) {
       alert(err.message || 'Failed to submit test');
       setSubmitting(false);
+      autoSubmitStarted.current = false;
       setShowConfirmModal(false);
     }
   };
+
+  // Derive remaining time from the server's original start timestamp so reopening
+  // the screen or restarting the app never resets the examination clock.
+  useEffect(() => {
+    if (!attempt || attempt.durationMinutes <= 0) return;
+    const updateRemaining = () => {
+      const startedAt = new Date(attempt.startedAt).getTime();
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const remaining = Math.max(0, attempt.durationMinutes * 60 - elapsed);
+      setRemainingSeconds(remaining);
+      if (remaining === 0 && !autoSubmitStarted.current) {
+        autoSubmitStarted.current = true;
+        setSubmitting(true);
+        apiRequest(`/api/v1/attempts/${attemptId}/submit`, { method: 'POST' })
+          .then(() => onSubmitted(attemptId))
+          .catch((err: any) => {
+            alert(err.message || 'Automatic submission failed. Please submit your test.');
+            autoSubmitStarted.current = false;
+            setSubmitting(false);
+          });
+      }
+    };
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 1000);
+    return () => window.clearInterval(interval);
+  }, [attempt, attemptId, onSubmitted]);
 
   if (loading || !attempt) {
     return (
@@ -127,7 +150,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 font-mono text-xs sm:text-sm font-bold bg-slate-100 text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200">
             <Clock className="w-4 h-4 text-slate-500" />
-            <span>{formatTimer(elapsedSeconds)}</span>
+            <span>{attempt.durationMinutes > 0 ? formatTimer(remainingSeconds) : 'Untimed'}</span>
           </div>
 
           <button
