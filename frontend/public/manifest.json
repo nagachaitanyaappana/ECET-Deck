@@ -1,7 +1,7 @@
 {
-  "name": "ECET Desk - AP ECET DCME Practice",
-  "short_name": "ECET Desk",
-  "description": "AP ECET DCME Exam Practice & Mock Platform with conceptual mistake explanations",
+  "name": "Paradox - AP ECET DCME Practice",
+  "short_name": "Paradox",
+  "description": "ECET practice, mock tests and performance review for DCME students",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
