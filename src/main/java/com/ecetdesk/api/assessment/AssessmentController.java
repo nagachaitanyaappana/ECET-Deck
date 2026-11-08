@@ -34,6 +34,11 @@ public class AssessmentController {
         return service.createQuestion(request);
     }
 
+    @GetMapping("/admin/tests/{testId}")
+    public Map<String, Object> getAdminTest(@PathVariable UUID testId) {
+        return service.getAdminTest(testId);
+    }
+
     @PostMapping("/admin/tests/{testId}/questions/{questionId}")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> addQuestion(@PathVariable UUID testId, @PathVariable UUID questionId) {
