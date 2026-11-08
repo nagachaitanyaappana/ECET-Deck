@@ -67,7 +67,9 @@ public class EmailAuthService {
         if(rows.isEmpty()) throw new AuthFlowException("The code is invalid or has expired.", 400);
         Map<String,Object> row=rows.get(0);
         UUID id=(UUID)row.get("id");
-        Instant expires=((java.sql.Timestamp)row.get("expires_at")).toInstant();
+        Object expiryValue=row.get("expires_at");
+        Instant expires=expiryValue instanceof java.time.OffsetDateTime offset
+                ? offset.toInstant() : ((java.sql.Timestamp)expiryValue).toInstant();
         int attempts=((Number)row.get("attempts")).intValue();
         if(!expires.isAfter(Instant.now()) || attempts>=5) {
             jdbc.update("UPDATE app.auth_challenges SET consumed_at=CURRENT_TIMESTAMP WHERE id=?",id);
