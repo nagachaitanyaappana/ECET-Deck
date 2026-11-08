@@ -47,6 +47,7 @@ export interface AttemptDetail {
   attemptId: string;
   status: 'IN_PROGRESS' | 'SUBMITTED' | 'TIMED_OUT';
   startedAt: string;
+  durationMinutes: number;
   questions: TestQuestion[];
 }
 
