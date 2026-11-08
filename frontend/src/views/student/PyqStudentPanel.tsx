@@ -38,7 +38,7 @@ export const PyqStudentPanel: React.FC = () => {
         setBusy(true);
         apiRequest('/api/v1/pyq/attempts/'+attempt.attemptId+'/submit',{method:'POST'})
           .then(data=>{setResult(data);setView('result');})
-          .catch(e=>{setError(e.message||'Automatic submission failed. Please submit now.');autoSubmitStarted.current=false;})
+          .catch(e=>{setError(e.message||'Automatic submission failed. Please submit now.');})
           .finally(()=>setBusy(false));
       }
     };
