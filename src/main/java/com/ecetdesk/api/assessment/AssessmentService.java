@@ -18,8 +18,12 @@ public class AssessmentService {
         "DAILY", Map.of("DCME",25,"MATHEMATICS",13,"PHYSICS",6,"CHEMISTRY",6)
     );
     private final JdbcTemplate jdbc;
+    private final OpenRouterQuestionGenerator generator;
 
-    public AssessmentService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public AssessmentService(JdbcTemplate jdbc, OpenRouterQuestionGenerator generator) {
+        this.jdbc = jdbc;
+        this.generator = generator;
+    }
 
     @Transactional
     public Map<String,Object> createTest(AssessmentController.CreateTestRequest r, String email) {
