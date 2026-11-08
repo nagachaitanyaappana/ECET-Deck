@@ -40,7 +40,7 @@ OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
 OPENROUTER_MODEL=openai/gpt-4o-mini
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=REPLACE_WITH_A_LONG_RANDOM_PASSWORD
-BOOTSTRAP_ADMIN_NAME=Paradox Admin
+BOOTSTRAP_ADMIN_NAME=ECET Desk Admin
 ```
 
 Use the exact host and username shown by Supabase under **Connect → Session pooler**. Do not add quotes around the values. Keep all secrets private.
@@ -168,7 +168,7 @@ Expected response shape:
 ```json
 {
   "status": "UP",
-  "message": "Paradox API is running",
+  "message": "ECET Desk API is running",
   "timestamp": "2026-11-08T14:10:00.000Z"
 }
 ```
