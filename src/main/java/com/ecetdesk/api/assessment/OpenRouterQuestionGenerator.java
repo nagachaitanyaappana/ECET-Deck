@@ -4,7 +4,6 @@ import java.util.*;
 import java.time.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -15,15 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class OpenRouterQuestionGenerator {
     private final RestClient client;
     private final ObjectMapper mapper;
-    private final String apiKey;
-    private final String model;
+    private final AdminRuntimeSettingsService settings;
 
-    public OpenRouterQuestionGenerator(ObjectMapper mapper,
-            @Value("${app.ai.openrouter.api-key:}") String apiKey,
-            @Value("${app.ai.openrouter.model:openai/gpt-4o-mini}") String model) {
+    public OpenRouterQuestionGenerator(ObjectMapper mapper, AdminRuntimeSettingsService settings) {
         this.mapper = mapper;
-        this.apiKey = apiKey;
-        this.model = model;
+        this.settings = settings;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(15));
         factory.setReadTimeout(Duration.ofSeconds(90));
@@ -34,6 +29,7 @@ public class OpenRouterQuestionGenerator {
     }
 
     public List<GeneratedQuestion> generate(String subject, int count, String extraInstructions) {
+        String apiKey = settings.getApiKey();
         if (apiKey == null || apiKey.isBlank() || count <= 0) {
             return Collections.emptyList();
         }
@@ -44,7 +40,7 @@ public class OpenRouterQuestionGenerator {
             attempts++;
             int needed = count - result.size();
             int batch = Math.min(5, needed);
-            List<GeneratedQuestion> batchQuestions = generateBatch(subject, batch, extraInstructions);
+            List<GeneratedQuestion> batchQuestions = generateBatch(subject, batch, extraInstructions, apiKey);
             if (batchQuestions.isEmpty()) {
                 break;
             }
@@ -73,7 +69,7 @@ public class OpenRouterQuestionGenerator {
         return trimmed;
     }
 
-    private List<GeneratedQuestion> generateBatch(String subject, int count, String extra) {
+    private List<GeneratedQuestion> generateBatch(String subject, int count, String extra, String apiKey) {
         String prompt = """
             Create exactly %d original, technically accurate ECET diploma entrance MCQs for subject %s.
             Target Andhra Pradesh ECET DCME diploma-level candidates. Questions must be clear and unambiguous.
@@ -86,7 +82,7 @@ public class OpenRouterQuestionGenerator {
             Additional focus/instructions: %s
             """.formatted(count, subject, extra == null || extra.isBlank() ? "Follow the standard subject syllabus." : extra);
         Map<String,Object> body = Map.of(
-            "model", model,
+            "model", settings.getModel(),
             "temperature", 0.25,
             "response_format", Map.of("type","json_object"),
             "messages", List.of(
