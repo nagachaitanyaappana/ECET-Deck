@@ -350,9 +350,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
+    <div className="dashboard-shell">
       {/* Top Banner (Matches Student Dashboard) */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg shadow-blue-500/15 mb-7">
+      <div className="dashboard-hero">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Control Center</h1>
         <p className="text-blue-100 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
           Generate complete question papers with a single click using OpenRouter AI, publish them instantly, and monitor student performance.
@@ -360,7 +360,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 mb-7 gap-2 overflow-x-auto">
+      <div className="dashboard-tabs">
         <button
           onClick={() => setTab('tests')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
