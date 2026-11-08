@@ -112,7 +112,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     setLoading(true);
     setMessage(null);
     try {
-      if (tab === 'settings') {\n        const data = await apiRequest<any>('/api/v1/admin/settings');\n        setRuntimeSettings(data);\n        setRuntimeModel(data.model || '');\n      } else if (tab === 'tests') {
+      if (tab === 'settings') {
+        const data = await apiRequest<any>('/api/v1/admin/settings');
+        setRuntimeSettings(data);
+        setRuntimeModel(data.model || '');
+      } else if (tab === 'tests') {
         const tests = await apiRequest<any[]>('/api/v1/admin/tests');
         setAvailableTests(tests);
       } else if (tab === 'leaderboard') {
@@ -510,7 +514,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           <Settings className="w-4 h-4" />
           Server Settings
         </button>
-      </div>\n\n      {message && (
+      </div>
+
+      {message && (
         <div
           className={`mb-6 p-4 rounded-xl flex items-start gap-2.5 text-sm ${
             message.type === 'success'
