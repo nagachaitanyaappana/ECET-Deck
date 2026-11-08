@@ -107,29 +107,34 @@ public class PyqService {
         }
         Integer inProgress=jdbc.queryForObject("SELECT COUNT(*) FROM pyq_attempts WHERE student_id=? AND status='IN_PROGRESS'",Integer.class,student);
         if (inProgress != null && inProgress > 0) throw conflict("Finish or submit your existing PYQ Challenge before starting another.");
+        List<UUID> selected = new ArrayList<>();
+        int totalAvailable = 0;
         for (var entry: BLUEPRINT.entrySet()) {
-            Integer available=jdbc.queryForObject("""
+            Integer available = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM pyq_questions q
                 WHERE q.subject=? AND q.curriculum='C23' AND q.verified=TRUE AND q.active=TRUE
                   AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id)=4
                   AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id AND o.is_correct=TRUE)=1
-                """,Integer.class,entry.getKey());
-            if (available == null || available < entry.getValue())
-                throw conflict("The verified C23 PYQ bank needs at least "+entry.getValue()+" "+entry.getKey()+" questions; currently available: "+(available==null?0:available)+".");
+                """, Integer.class, entry.getKey());
+            int count = available == null ? 0 : available;
+            totalAvailable += count;
+            int limit = Math.min(count, entry.getValue());
+            if (limit > 0) {
+                selected.addAll(jdbc.query("""
+                    SELECT q.id FROM pyq_questions q
+                    WHERE q.subject=? AND q.curriculum='C23' AND q.verified=TRUE AND q.active=TRUE
+                      AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id)=4
+                      AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id AND o.is_correct=TRUE)=1
+                    ORDER BY random() LIMIT ?
+                    """, (rs,row) -> UUID.fromString(rs.getString(1)), entry.getKey(), limit));
+            }
+        }
+        if (selected.isEmpty()) {
+            throw conflict("The PYQ question bank has no verified questions yet. Please check back shortly or explore the Previous Year Papers library below.");
         }
 
-        UUID attempt=UUID.randomUUID();
-        jdbc.update("INSERT INTO pyq_attempts(id,student_id) VALUES (?,?)",attempt,student);
-        List<UUID> selected=new ArrayList<>();
-        for (var entry: BLUEPRINT.entrySet()) {
-            selected.addAll(jdbc.query("""
-                SELECT q.id FROM pyq_questions q
-                WHERE q.subject=? AND q.curriculum='C23' AND q.verified=TRUE AND q.active=TRUE
-                  AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id)=4
-                  AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id AND o.is_correct=TRUE)=1
-                ORDER BY random() LIMIT ?
-                """,(rs,row)->UUID.fromString(rs.getString(1)),entry.getKey(),entry.getValue()));
-        }
+        UUID attempt = UUID.randomUUID();
+        jdbc.update("INSERT INTO pyq_attempts(id,student_id,total_questions) VALUES (?,?,?)", attempt, student, selected.size());
         Collections.shuffle(selected);
 
         List<Object[]> questionBatch = new ArrayList<>(selected.size());

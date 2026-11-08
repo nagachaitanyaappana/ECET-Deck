@@ -127,8 +127,16 @@ public class AssessmentService {
             .map(entry -> CompletableFuture.runAsync(() -> {
                 String subject = entry.getKey();
                 int target = entry.getValue();
-                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
-                    generator.generate(subject, target, r.instructions());
+                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated = new ArrayList<>();
+                try {
+                    generated.addAll(generator.generate(subject, target, r.instructions()));
+                } catch (Exception ex) {
+                    System.err.println("OpenRouter generation failed for " + subject + ": " + ex.getMessage());
+                }
+                if (generated.size() < target) {
+                    int shortfall = target - generated.size();
+                    generated.addAll(getFallbackQuestions(subject, shortfall));
+                }
                 generatedBySubjectList.put(subject, generated);
                 generatedCounts.put(subject, generated.size());
             }))
@@ -137,12 +145,18 @@ public class AssessmentService {
         try {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         } catch (Exception ex) {
-            try { deleteTest(testId); } catch (Exception ignored) {}
-            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-            if (cause instanceof ResponseStatusException rse) {
-                throw rse;
+            System.err.println("One or more AI futures failed; topping up with verified question bank.");
+        }
+
+        for (var entry : blueprint.entrySet()) {
+            String subject = entry.getKey();
+            int target = entry.getValue();
+            List<OpenRouterQuestionGenerator.GeneratedQuestion> current =
+                generatedBySubjectList.computeIfAbsent(subject, k -> new ArrayList<>());
+            if (current.size() < target) {
+                current.addAll(getFallbackQuestions(subject, target - current.size()));
             }
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed generating test questions: " + cause.getMessage(), cause);
+            generatedCounts.put(subject, current.size());
         }
 
         int added = persistGeneratedQuestions(testId, generatedBySubjectList);
@@ -244,8 +258,15 @@ public class AssessmentService {
                 throw bad(subject + " already has more questions than the test blueprint allows.");
 
             if (missing > 0) {
-                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
-                    generator.generate(subject, missing, instructions);
+                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated = new ArrayList<>();
+                try {
+                    generated.addAll(generator.generate(subject, missing, instructions));
+                } catch (Exception ex) {
+                    System.err.println("OpenRouter draft generation failed for " + subject + ": " + ex.getMessage());
+                }
+                if (generated.size() < missing) {
+                    generated.addAll(getFallbackQuestions(subject, missing - generated.size()));
+                }
                 generatedBySubjectList.put(subject, generated);
                 generatedCounts.put(subject, generated.size());
             } else {
@@ -262,6 +283,37 @@ public class AssessmentService {
             "generatedBySubject", generatedCounts,
             "message", "Generated questions remain in draft status. Review them before publishing."
         );
+    }
+
+    public List<OpenRouterQuestionGenerator.GeneratedQuestion> getFallbackQuestions(String subject, int count) {
+        if (count <= 0) return Collections.emptyList();
+        List<Map<String, Object>> qRows = jdbc.queryForList("""
+            SELECT q.id, q.question_text AS "questionText", q.explanation, q.difficulty
+            FROM pyq_questions q
+            WHERE q.subject = ? AND q.verified = true
+            ORDER BY random() LIMIT ?
+            """, subject, count);
+
+        List<OpenRouterQuestionGenerator.GeneratedQuestion> list = new ArrayList<>();
+        for (var r : qRows) {
+            UUID qid = (UUID) r.get("id");
+            List<Map<String, Object>> optRows = jdbc.queryForList("""
+                SELECT option_text AS text, is_correct AS correct
+                FROM pyq_question_options
+                WHERE question_id = ?
+                ORDER BY random()
+                """, qid);
+            List<OpenRouterQuestionGenerator.GeneratedOption> options = optRows.stream()
+                .map(o -> new OpenRouterQuestionGenerator.GeneratedOption((String) o.get("text"), Boolean.TRUE.equals(o.get("correct"))))
+                .toList();
+            list.add(new OpenRouterQuestionGenerator.GeneratedQuestion(
+                (String) r.get("questionText"),
+                (String) r.get("explanation"),
+                (String) r.get("difficulty"),
+                options
+            ));
+        }
+        return list;
     }
 
     @Transactional

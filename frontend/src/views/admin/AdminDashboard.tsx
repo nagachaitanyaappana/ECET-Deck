@@ -350,65 +350,93 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
-      {/* Top Banner (Matches Student Dashboard) */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg shadow-blue-500/15 mb-7">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Control Center</h1>
-        <p className="text-blue-100 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-          Generate complete question papers with a single click using OpenRouter AI, publish them instantly, and monitor student performance.
-        </p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-9 font-sans selection:bg-blue-600 selection:text-white">
+      {/* Top Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 border border-slate-800/80 rounded-3xl p-6 sm:p-8 text-white shadow-2xl mb-8">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest bg-blue-500/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-blue-400" />
+                Administrative Suite • ECET C23
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-heading font-black tracking-tight text-white">
+              Command & Assessment Control
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed">
+              Generate full mock papers with AI or verified PYQ banks, oversee student requests, monitor performance, and manage past papers.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-800/80 p-3 rounded-2xl shrink-0 backdrop-blur-md">
+            <div className="px-3 text-center border-r border-slate-800">
+              <div className="text-lg font-heading font-black text-white">{availableTests.length}</div>
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Tests</div>
+            </div>
+            <div className="px-3 text-center border-r border-slate-800">
+              <div className="text-lg font-heading font-black text-amber-400">{pendingRequestsCount}</div>
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Requests</div>
+            </div>
+            <div className="px-3 text-center">
+              <div className="text-lg font-heading font-black text-indigo-400">{openFeedbacksCount}</div>
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Feedback</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 mb-7 gap-2 overflow-x-auto">
+      {/* Segmented Pill Navigation Tabs */}
+      <div className="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/80 mb-8 overflow-x-auto gap-1 backdrop-blur-md">
         <button
           onClick={() => setTab('tests')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'tests'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          Test Paper Management
+          Test Papers
         </button>
 
         <button
           onClick={() => setTab('analytics')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'analytics'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
           <Users className="w-4 h-4" />
-          Student Submissions
+          Submissions
         </button>
 
         <button
           onClick={() => setTab('leaderboard')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'leaderboard'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
           <Trophy className="w-4 h-4" />
-          Friends Leaderboard
+          Leaderboard
         </button>
 
         <button
           onClick={() => setTab('requests')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'requests'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <Zap className="w-4 h-4 text-amber-500" />
-          Grand Test Requests
+          <Zap className="w-4 h-4 text-amber-400" />
+          Grand Requests
           {pendingRequestsCount > 0 && (
-            <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-black">
               {pendingRequestsCount}
             </span>
           )}
@@ -416,40 +444,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
         <button
           onClick={() => setTab('papers')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'papers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            tab === 'papers'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
         >
           <UploadCloud className="w-4 h-4" />
-          PYQ Papers
+          PYQ Drive
         </button>
 
         <button
           onClick={() => setTab('questions')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'questions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            tab === 'questions'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
         >
           <Database className="w-4 h-4" />
-          PYQ Bank
+          Question Bank
         </button>
 
         <button
           onClick={() => setTab('pyq')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            tab === 'pyq'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
         >
           <BookOpen className="w-4 h-4" />
-          PYQ Monitoring
+          PYQ Monitor
         </button>
 
         <button
           onClick={() => setTab('feedbacks')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'feedbacks'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <MessageSquare className="w-4 h-4 text-indigo-500" />
-          Student Feedback
+          <MessageSquare className="w-4 h-4 text-indigo-400" />
+          Feedback
           {openFeedbacksCount > 0 && (
-            <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-black">
               {openFeedbacksCount}
             </span>
           )}
@@ -481,23 +521,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       ) : (
         <>
           {tab === 'papers' && (
-            <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
-              <form onSubmit={handleRegisterPaper} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-                <div><h2 className="text-lg font-bold text-slate-900">Add a Google Drive paper</h2><p className="text-sm text-slate-500 mt-1">Keep the PDF in Google Drive and register its sharing link here.</p></div>
-                <label className="block text-sm font-medium text-slate-700">Paper title<input required maxLength={180} value={paperTitle} onChange={e=>setPaperTitle(e.target.value)} placeholder="ECET DCME 2025 Question Paper" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6">
+              <form onSubmit={handleRegisterPaper} className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-7 space-y-4 shadow-2xl shadow-black/40 text-slate-900">
+                <div><h2 className="text-lg font-bold text-slate-900 font-heading">Add a Google Drive paper</h2><p className="text-xs text-slate-500 mt-1">Keep the PDF in Google Drive and register its sharing link here.</p></div>
+                <label className="block text-xs font-semibold text-slate-700">Paper title<input required maxLength={180} value={paperTitle} onChange={e=>setPaperTitle(e.target.value)} placeholder="ECET DCME 2025 Question Paper" className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"/></label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="block text-sm font-medium text-slate-700">Exam year<input required type="number" min="2000" max="2100" value={paperYear} onChange={e=>setPaperYear(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                  <label className="block text-sm font-medium text-slate-700">Document type<select value={paperType} onChange={e=>setPaperType(e.target.value as any)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="QUESTION_PAPER">Question paper</option><option value="ANSWER_KEY">Answer key</option></select></label>
+                  <label className="block text-xs font-semibold text-slate-700">Exam year<input required type="number" min="2000" max="2100" value={paperYear} onChange={e=>setPaperYear(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"/></label>
+                  <label className="block text-xs font-semibold text-slate-700">Document type<select value={paperType} onChange={e=>setPaperType(e.target.value as any)} className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"><option value="QUESTION_PAPER">Question paper</option><option value="ANSWER_KEY">Answer key</option></select></label>
                 </div>
-                <label className="block text-sm font-medium text-slate-700">Google Drive sharing link<input required type="url" value={paperUrl} onChange={e=>setPaperUrl(e.target.value)} placeholder="https://drive.google.com/file/d/..." className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                <label className="block text-sm font-medium text-slate-700">Source / publisher (optional)<input value={paperSource} onChange={e=>setPaperSource(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                <label className="block text-sm font-medium text-slate-700">Attribution / notes (optional)<textarea value={paperAttribution} onChange={e=>setPaperAttribution(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
-                <button disabled={uploadingPaper} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 disabled:opacity-50">{uploadingPaper?'Adding link...':'Add paper to library'}</button>
-                <p className="text-xs text-slate-400">Set Drive access to “Anyone with the link — Viewer” so students can open the PDF.</p>
+                <label className="block text-xs font-semibold text-slate-700">Google Drive sharing link<input required type="url" value={paperUrl} onChange={e=>setPaperUrl(e.target.value)} placeholder="https://drive.google.com/file/d/..." className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"/></label>
+                <label className="block text-xs font-semibold text-slate-700">Source / publisher (optional)<input value={paperSource} onChange={e=>setPaperSource(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"/></label>
+                <label className="block text-xs font-semibold text-slate-700">Attribution / notes (optional)<textarea value={paperAttribution} onChange={e=>setPaperAttribution(e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-slate-50 focus:bg-white"/></label>
+                <button disabled={uploadingPaper} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 text-sm shadow-md disabled:opacity-50 transition-all cursor-pointer">{uploadingPaper?'Adding link...':'Add paper to library'}</button>
+                <p className="text-[11px] text-slate-400">Set Drive access to “Anyone with the link — Viewer” so students can open the PDF.</p>
               </form>
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h2 className="text-lg font-bold text-slate-900">Published papers</h2>
-                <div className="divide-y divide-slate-100 mt-3">
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-7 shadow-2xl shadow-black/40 text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900 font-heading">Published papers</h2>
+                <div className="divide-y divide-slate-100 mt-4">
                   {pyqPapers.map(p=><div key={p.id} className="py-3 flex items-center justify-between gap-3"><div><div className="font-semibold text-sm text-slate-800">{p.title}</div><div className="text-xs text-slate-500">{p.examYear} · {p.paperType==='ANSWER_KEY'?'Answer key':'Question paper'} · {p.curriculum} · {p.active?'Published':'Hidden'}</div></div><div className="flex items-center gap-3">{p.publicUrl&&<a href={p.publicUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-700">Open PDF</a>}<button onClick={async()=>{try{await apiRequest('/api/v1/admin/pyq/papers/'+p.id+'/active',{method:'PATCH',body:JSON.stringify({active:!p.active})});const updated=await apiRequest<any[]>('/api/v1/admin/pyq/papers');setPyqPapers(updated);}catch(e:any){setMessage({type:'error',text:e.message||'Could not update paper.'});}}} className="text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1.5">{p.active?'Hide':'Publish'}</button></div></div>)}
                   {pyqPapers.length===0&&<p className="text-sm text-slate-500 py-5">No papers registered yet.</p>}
                 </div>
@@ -508,17 +548,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           {tab === 'questions' && (
             <div className="space-y-6">
               {/* Blueprint Target Status Card */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl shadow-black/40 text-slate-900">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">PYQ Exam Blueprint Readiness (C23)</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className="text-lg font-bold text-slate-900 font-heading">PYQ Exam Blueprint Readiness (C23)</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
                       The randomized 200-question exam requires verified questions across 4 subjects.
                     </p>
                   </div>
                   <button
                     onClick={() => setShowBulkModal(!showBulkModal)}
-                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-md shadow-blue-500/20 transition-all"
                   >
                     <PlusCircle className="w-4 h-4" />
                     {showBulkModal ? 'Close Importer' : 'Bulk Import Questions'}
@@ -535,7 +575,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                     const isReady = item.current >= item.target;
                     const pct = Math.min(100, Math.round((item.current / item.target) * 100));
                     return (
-                      <div key={item.subject} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                      <div key={item.subject} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
                         <div className="flex justify-between items-center text-xs font-semibold text-slate-600">
                           <span>{item.subject}</span>
                           <span className={isReady ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
@@ -548,7 +588,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-500 font-medium">
                           {isReady ? '✓ Blueprint satisfied' : `Need ${item.target - item.current} more`}
                         </div>
                       </div>
@@ -559,7 +599,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
               {/* Bulk Importer Form */}
               {showBulkModal && (
-                <form onSubmit={handleBulkImportQuestions} className="bg-white rounded-2xl border border-blue-200 p-6 space-y-4 shadow-sm">
+                <form onSubmit={handleBulkImportQuestions} className="bg-white/95 backdrop-blur-xl rounded-3xl border border-blue-200 p-6 sm:p-8 space-y-4 shadow-2xl text-slate-900">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">Bulk Import Questions (JSON)</h3>
@@ -727,24 +767,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           {/* TAB 1: Tests */}
           {tab === 'tests' && (
             <div className="space-y-6">
-              {/* Single-Click Automated Test Generation */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-blue-600" />
+              {/* Single-Click Automated Test Generation (White container on dark background) */}
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl shadow-black/40 text-slate-900 relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                  <h2 className="text-lg font-heading font-bold text-slate-900 flex items-center gap-2.5">
+                    <Zap className="w-5 h-5 text-amber-500" />
                     Automated Question Paper Generator
                   </h2>
-                  <span className="text-[11px] font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200/60 hidden sm:inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Powered by OpenRouter AI
+                  <span className="text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full inline-flex items-center gap-1.5 self-start sm:self-auto">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Powered by OpenRouter AI & PYQ Bank
                   </span>
                 </div>
-                <p className="text-sm sm:text-base text-slate-500 mb-5 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">
                   Click a button to generate complete questions with conceptual explanations across DCME, Math, Physics, and Chemistry, and automatically publish them live for students.
                 </p>
 
                 {/* Optional Topic Instructions */}
-                <div className="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+                <div className="mb-6 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-2">
                     <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                     Optional Syllabus Focus / Topics
                   </label>
@@ -753,13 +793,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                     placeholder="e.g. Focus on Computer Networks, Operating Systems, and Calculus (or leave blank for standard syllabus)"
                     value={aiInstructions}
                     onChange={(e) => setAiInstructions(e.target.value)}
-                    className="w-full px-3.5 py-2 text-sm rounded-lg bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full px-4 py-2.5 text-sm rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                   />
-                  <div className="flex items-center justify-end mt-1.5">
+                  <div className="flex items-center justify-end mt-2">
                     <button
                       type="button"
                       onClick={() => setShowAdvanced(!showAdvanced)}
-                      className="text-[11px] text-blue-600 hover:text-blue-700 cursor-pointer font-medium"
+                      className="text-xs text-blue-600 hover:text-blue-700 cursor-pointer font-medium"
                     >
                       {showAdvanced ? 'Hide date/title options' : 'Customize date or title'}
                     </button>
@@ -768,22 +808,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                   {showAdvanced && (
                     <div className="grid sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200">
                       <div>
-                        <label className="block text-[11px] font-medium text-slate-600 mb-1">Scheduled Date (Daily Mocks)</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Scheduled Date (Daily Mocks)</label>
                         <input
                           type="date"
                           value={customScheduledDate}
                           onChange={(e) => setCustomScheduledDate(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium text-slate-600 mb-1">Custom Title Override</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Custom Title Override</label>
                         <input
                           type="text"
                           placeholder="e.g. Weekend Special Mock"
                           value={customTitle}
                           onChange={(e) => setCustomTitle(e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
                     </div>
@@ -791,26 +831,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                 </div>
 
                 {/* The Two 1-Click Action Cards */}
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-5">
                   {/* Daily Mock Card */}
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 hover:bg-slate-50 transition-all flex flex-col justify-between">
+                  <div className="border border-slate-200 bg-slate-50/70 rounded-2xl p-5 hover:border-slate-300 transition-all flex flex-col justify-between shadow-xs">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-extrabold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-lg">
                           Daily Mock
                         </span>
-                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                          <Clock className="w-3 h-3" /> Untimed
+                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-slate-500" /> Untimed
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 mb-0.5">
+                      <h3 className="text-lg font-heading font-bold text-slate-900 mb-1">
                         50 Questions • 50 Marks
                       </h3>
-                      <p className="text-xs text-slate-500 mb-3">
+                      <p className="text-xs text-slate-500 mb-4">
                         25 DCME • 13 Maths • 6 Physics • 6 Chemistry
                       </p>
                       {todaysDailyMock && todaysDailyMock.status === 'PUBLISHED' && (
-                        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg mb-3">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl mb-4">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           Today's mock is live ({todaysDailyMock.title})
                         </div>
@@ -821,7 +861,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                       type="button"
                       onClick={() => handleAutoGenerate('DAILY')}
                       disabled={generatingType !== null}
-                      className="w-full min-h-12 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {generatingType === 'DAILY' ? (
                         <>
@@ -843,20 +883,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                   </div>
 
                   {/* Grand Test Card */}
-                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 hover:bg-slate-50 transition-all flex flex-col justify-between">
+                  <div className="border border-slate-200 bg-slate-50/70 rounded-2xl p-5 hover:border-slate-300 transition-all flex flex-col justify-between shadow-xs">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-md">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-extrabold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-lg">
                           Full Grand Test
                         </span>
-                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
-                          <Clock className="w-3 h-3" /> 180 Mins
+                        <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                          <Clock className="w-3.5 h-3.5 text-slate-500" /> 180 Mins
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 mb-0.5">
+                      <h3 className="text-lg font-heading font-bold text-slate-900 mb-1">
                         200 Questions • 200 Marks
                       </h3>
-                      <p className="text-xs text-slate-500 mb-3">
+                      <p className="text-xs text-slate-500 mb-4">
                         100 DCME • 50 Maths • 25 Physics • 25 Chemistry
                       </p>
                     </div>
@@ -865,7 +905,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                       type="button"
                       onClick={() => handleAutoGenerate('GRAND')}
                       disabled={generatingType !== null}
-                      className="w-full min-h-12 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {generatingType === 'GRAND' ? (
                         <>
@@ -883,16 +923,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                 </div>
               </div>
 
-              {/* Published & Active Tests List */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              {/* Published & Active Tests List (White container) */}
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl shadow-black/40 text-slate-900">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-base font-heading font-bold text-slate-900 flex items-center gap-2.5">
                     <FileText className="w-4 h-4 text-blue-600" />
                     All Test Papers ({availableTests.length})
                   </h2>
                   <button
                     onClick={loadTabContent}
-                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-xl transition-all"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> Refresh
                   </button>
@@ -997,69 +1037,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           {/* TAB 2: Student Submissions */}
           {tab === 'analytics' && (
             <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-            <label className="block text-xs font-semibold text-slate-700 mb-2">Select Test to Inspect</label>
-            <select
-              value={selectedTestId}
-              onChange={(e) => {
-                setSelectedTestId(e.target.value);
-                loadTestAttempts(e.target.value);
-              }}
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
-            >
-              {availableTests.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title} ({t.testType})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-            <h3 className="font-bold text-slate-900 text-sm mb-4">Student Results & Submissions</h3>
-            {testAttempts.length === 0 ? (
-              <p className="text-xs text-slate-500 py-6 text-center">No students have submitted this test yet.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {testAttempts.map((att, idx) => (
-                  <div key={att.attemptId} className="py-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center">
-                        #{idx + 1}
-                      </span>
-                      <div>
-                        <div className="font-bold text-slate-900 text-sm">{att.studentDisplayName}</div>
-                        <div className="text-xs text-slate-400">{att.studentEmail}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-bold text-slate-900 text-sm">
-                          {att.score} / {att.totalMarks}
-                        </div>
-                        <div className="text-xs text-emerald-600 font-semibold">{att.correctCount} Correct</div>
-                      </div>
-
-                      <button
-                        onClick={() => onReviewAttempt(att.attemptId)}
-                        className="min-h-10 py-2 px-3.5 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Review Attempt</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 shadow-2xl text-slate-900">
+                <label className="block text-xs font-semibold text-slate-700 mb-2">Select Test to Inspect</label>
+                <select
+                  value={selectedTestId}
+                  onChange={(e) => {
+                    setSelectedTestId(e.target.value);
+                    loadTestAttempts(e.target.value);
+                  }}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white"
+                >
+                  {availableTests.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title} ({t.testType})
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 3: Leaderboard */}
-      {tab === 'leaderboard' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl text-slate-900">
+                <h3 className="font-heading font-bold text-slate-900 text-base mb-4">Student Results & Submissions</h3>
+                {testAttempts.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-6 text-center">No students have submitted this test yet.</p>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {testAttempts.map((att, idx) => (
+                      <div key={att.attemptId} className="py-3.5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                            #{idx + 1}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-900 text-sm">{att.studentDisplayName}</div>
+                            <div className="text-xs text-slate-500">{att.studentEmail}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="font-bold text-slate-900 text-sm">
+                              {att.score} / {att.totalMarks}
+                            </div>
+                            <div className="text-xs text-emerald-700 font-semibold">{att.correctCount} Correct</div>
+                          </div>
+
+                          <button
+                            onClick={() => onReviewAttempt(att.attemptId)}
+                            className="py-2 px-3.5 rounded-xl text-xs sm:text-sm font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <span>Review Attempt</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Leaderboard */}
+          {tab === 'leaderboard' && (
+            <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl text-slate-900">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
               <Trophy className="w-6 h-6" />
@@ -1112,7 +1152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
       {/* TAB 4: Grand Test Requests */}
       {tab === 'requests' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl shadow-black/40 text-slate-900">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
@@ -1212,7 +1252,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
       {/* TAB 5: Student Feedbacks */}
       {tab === 'feedbacks' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl shadow-black/40 text-slate-900">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">

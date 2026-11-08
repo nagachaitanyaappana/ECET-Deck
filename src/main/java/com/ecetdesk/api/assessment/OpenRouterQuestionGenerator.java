@@ -34,15 +34,43 @@ public class OpenRouterQuestionGenerator {
     }
 
     public List<GeneratedQuestion> generate(String subject, int count, String extraInstructions) {
-        if (apiKey == null || apiKey.isBlank())
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "OpenRouter is not configured. Add OPENROUTER_API_KEY to your local .env file.");
+        if (apiKey == null || apiKey.isBlank() || count <= 0) {
+            return Collections.emptyList();
+        }
         List<GeneratedQuestion> result = new ArrayList<>();
-        while (result.size() < count) {
-            int batch = Math.min(10, count - result.size());
-            result.addAll(generateBatch(subject, batch, extraInstructions));
+        int attempts = 0;
+        int maxAttempts = Math.max(5, (count / 3) + 2);
+        while (result.size() < count && attempts < maxAttempts) {
+            attempts++;
+            int needed = count - result.size();
+            int batch = Math.min(5, needed);
+            List<GeneratedQuestion> batchQuestions = generateBatch(subject, batch, extraInstructions);
+            if (batchQuestions.isEmpty()) {
+                break;
+            }
+            result.addAll(batchQuestions);
         }
         return result;
+    }
+
+    private String extractJson(String text) {
+        if (text == null) return "{}";
+        String trimmed = text.trim();
+        if (trimmed.startsWith("```json")) {
+            trimmed = trimmed.substring(7);
+        } else if (trimmed.startsWith("```")) {
+            trimmed = trimmed.substring(3);
+        }
+        if (trimmed.endsWith("```")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 3);
+        }
+        trimmed = trimmed.trim();
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return trimmed.substring(start, end + 1);
+        }
+        return trimmed;
     }
 
     private List<GeneratedQuestion> generateBatch(String subject, int count, String extra) {
@@ -74,33 +102,36 @@ public class OpenRouterQuestionGenerator {
                 .body(body).retrieve().body(String.class);
             JsonNode root = mapper.readTree(raw);
             String content = root.path("choices").path(0).path("message").path("content").asText();
-            JsonNode questions = mapper.readTree(content).path("questions");
-            if (!questions.isArray() || questions.size() != count)
-                throw new IllegalStateException("The AI response did not contain the requested number of questions.");
+            String jsonStr = extractJson(content);
+            JsonNode questions = mapper.readTree(jsonStr).path("questions");
+            if (!questions.isArray() || questions.isEmpty()) {
+                return Collections.emptyList();
+            }
             List<GeneratedQuestion> parsed = new ArrayList<>();
             for (JsonNode q : questions) {
+                if (parsed.size() >= count) break;
                 JsonNode options = q.path("options");
-                if (!options.isArray() || options.size() != 4) throw new IllegalStateException("An AI question did not have four options.");
+                if (!options.isArray() || options.size() != 4) continue;
                 List<GeneratedOption> parsedOptions = new ArrayList<>();
                 int correct = 0;
                 for (JsonNode option : options) {
                     boolean isCorrect = option.path("correct").asBoolean(false);
                     if (isCorrect) correct++;
                     String text = option.path("text").asText("").trim();
-                    if (text.isBlank()) throw new IllegalStateException("An AI option was empty.");
+                    if (text.isBlank()) break;
                     parsedOptions.add(new GeneratedOption(text,isCorrect));
                 }
-                if (correct != 1) throw new IllegalStateException("An AI question did not have exactly one correct option.");
-                String questionText=q.path("questionText").asText("").trim();
-                String difficulty=q.path("difficulty").asText("MEDIUM").toUpperCase(Locale.ROOT);
-                if(questionText.isBlank()) throw new IllegalStateException("An AI question was empty.");
-                if(!Set.of("EASY","MEDIUM","HARD").contains(difficulty)) difficulty="MEDIUM";
-                parsed.add(new GeneratedQuestion(questionText,q.path("explanation").asText(""),difficulty,parsedOptions));
+                if (correct != 1 || parsedOptions.size() != 4) continue;
+                String questionText = q.path("questionText").asText("").trim();
+                String difficulty = q.path("difficulty").asText("MEDIUM").toUpperCase(Locale.ROOT);
+                if (questionText.isBlank()) continue;
+                if (!Set.of("EASY","MEDIUM","HARD").contains(difficulty)) difficulty = "MEDIUM";
+                parsed.add(new GeneratedQuestion(questionText, q.path("explanation").asText(""), difficulty, parsedOptions));
             }
             return parsed;
         } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                "OpenRouter question generation failed or returned invalid JSON: "+ex.getMessage());
+            System.err.println("OpenRouter batch generation failed: " + ex.getMessage());
+            return Collections.emptyList();
         }
     }
 
