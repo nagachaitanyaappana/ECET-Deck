@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { apiRequest, ApiError } from '../api/client';
+import { apiRequest, ApiError, getApiBaseUrl, setApiBaseUrl } from '../api/client';
 import type { AuthResponse } from '../types';
-import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle } from 'lucide-react';
+import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
@@ -15,6 +15,15 @@ export const LoginView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showServerConfig, setShowServerConfig] = useState(false);
+  const [customServerUrl, setCustomServerUrl] = useState(() => getApiBaseUrl());
+
+  const handleSaveServerUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiBaseUrl(customServerUrl);
+    setSuccess('Server URL saved! You can now sign in.');
+    setShowServerConfig(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,9 +186,52 @@ export const LoginView: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
-            Private preparation group for DCME diploma candidates.
+          <div className="mt-6 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 pt-4">
+            <span>Private group for DCME diploma candidates.</span>
+            <button
+              type="button"
+              onClick={() => setShowServerConfig(!showServerConfig)}
+              className="text-slate-400 hover:text-blue-600 transition-colors p-1 cursor-pointer flex items-center gap-1 font-medium"
+              title="Configure Backend Server URL"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Server</span>
+            </button>
           </div>
+
+          {showServerConfig && (
+            <form onSubmit={handleSaveServerUrl} className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-700">
+                <Server className="w-3.5 h-3.5 text-blue-600" />
+                Backend API Server URL
+              </div>
+              <p className="text-[11px] text-slate-500">
+                On mobile app or desktop, point to your cloud server or Wi-Fi IP (e.g. <code>http://192.168.1.10:8080</code> or <code>https://my-app.railway.app</code>).
+              </p>
+              <input
+                type="text"
+                placeholder="Leave blank for same-origin"
+                value={customServerUrl}
+                onChange={(e) => setCustomServerUrl(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowServerConfig(false)}
+                  className="px-2.5 py-1 text-slate-600 hover:bg-slate-200 rounded text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold cursor-pointer"
+                >
+                  Save URL
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

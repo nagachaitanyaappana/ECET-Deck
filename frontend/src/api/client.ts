@@ -1,4 +1,25 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const DEFAULT_API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+
+export function getApiBaseUrl(): string {
+  const saved = localStorage.getItem('ecet_api_base_url');
+  if (saved) return saved.replace(/\/+$/, '');
+  if (DEFAULT_API_BASE) return DEFAULT_API_BASE;
+  const isCapacitor = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor.isNativePlatform();
+  if (isCapacitor) {
+    // In Android emulator, 10.0.2.2 points to host machine localhost
+    return 'http://10.0.2.2:8080';
+  }
+  return '';
+}
+
+export function setApiBaseUrl(url: string): void {
+  const trimmed = url.trim().replace(/\/+$/, '');
+  if (trimmed) {
+    localStorage.setItem('ecet_api_base_url', trimmed);
+  } else {
+    localStorage.removeItem('ecet_api_base_url');
+  }
+}
 
 export class ApiError extends Error {
   status: number;
@@ -25,7 +46,8 @@ export async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = `${API_BASE}${endpoint}`;
+  const base = getApiBaseUrl();
+  const url = `${base}${endpoint}`;
   const response = await fetch(url, {
     ...options,
     headers,
