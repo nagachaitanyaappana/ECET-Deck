@@ -115,6 +115,14 @@ export const LoginView: React.FC = () => {
             {step === 'forgot' && <div className="auth-field"><label htmlFor="recovery-email">Email address</label><input id="recovery-email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>}
             <button type="submit" disabled={loading} className="auth-submit">{loading ? <span className="auth-spinner" /> : <>{step === 'credentials' ? (tab === 'login' ? 'Continue to dashboard' : 'Create account') : step === 'verify-email' ? 'Verify email' : step === 'verify-login' ? 'Verify and sign in' : step === 'forgot' ? 'Send recovery code' : 'Reset password'} <ArrowRight size={17} /></>}</button>
           </form>
+          {step === 'verify-email' && <button type="button" disabled={loading} onClick={async () => {
+            setLoading(true); clearMessages();
+            try {
+              const result = await apiRequest<{message:string}>('/api/v1/auth/resend-verification', { method:'POST', body:JSON.stringify({email}) });
+              setSuccess(result.message);
+            } catch (err:any) { setError(err instanceof ApiError ? err.message : 'Could not resend the code.'); }
+            finally { setLoading(false); }
+          }} className="mt-3 text-sm font-semibold text-lime-700 hover:text-lime-800 disabled:opacity-50">Resend verification code</button>}
           {step !== 'credentials' && <button type="button" onClick={backToCredentials} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800"><ArrowLeft size={15} /> Back to sign in</button>}
           <div className="auth-bottom"><span>Private study space for DCME candidates</span><button type="button" onClick={() => setShowServerConfig(!showServerConfig)}><Settings size={14} /> Server settings</button></div>
           {showServerConfig && <form onSubmit={handleSaveServerUrl} className="auth-server-panel"><strong><Server size={15} /> Backend API address</strong><p>Enter your hosted server URL or local Wi-Fi address. Leave blank to use the current origin.</p><input type="text" aria-label="Backend API address" placeholder="https://your-api.example.com" value={customServerUrl} onChange={e => setCustomServerUrl(e.target.value)} /><div><button type="button" onClick={() => setShowServerConfig(false)}>Cancel</button><button type="submit">Save address</button></div></form>}
