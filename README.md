@@ -241,7 +241,7 @@ PDF binaries stay in Google Drive; PostgreSQL stores only the Drive file ID and 
 
 ### Database and deployment notes
 
-Migration `V6__add_pyq_question_bank_and_exams.sql` is additive and Flyway-managed. It creates separate PYQ tables and indexes; it does not rewrite or delete existing AI assessment data. It is PostgreSQL-compatible and is applied automatically on the next backend startup/deployment. The question bank and attempt records live in the existing Supabase PostgreSQL database; PDF files live in Supabase Storage. No new paid service or extra database is required for this feature.
+Migration `V6__add_pyq_question_bank_and_exams.sql` is additive and Flyway-managed. It creates separate PYQ tables and indexes; it does not rewrite or delete existing AI assessment data. It is PostgreSQL-compatible and is applied automatically on the next backend startup/deployment. The question bank, paper metadata, and attempt records live in the existing Supabase PostgreSQL database; PDF files remain in Google Drive. No new paid service or extra database is required for this feature.
 
 Before enabling students, upload and verify enough C23 questions to meet the full 200-question blueprint, store the permitted PDFs in Google Drive, set link access to Viewer, and register their links, and test with a STUDENT account. Run the backend and frontend test/build commands before merging this feature branch.
 
