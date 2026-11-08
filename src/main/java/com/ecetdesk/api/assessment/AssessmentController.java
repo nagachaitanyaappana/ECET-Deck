@@ -40,6 +40,12 @@ public class AssessmentController {
         return service.addQuestion(testId, questionId);
     }
 
+    @PostMapping("/admin/tests/{testId}/generate")
+    public Map<String, Object> generateQuestions(@PathVariable UUID testId,
+                                                  @RequestBody(required = false) GenerateRequest request) {
+        return service.generateQuestions(testId, request == null ? null : request.instructions());
+    }
+
     @PostMapping("/admin/tests/{testId}/publish")
     public Map<String, Object> publish(@PathVariable UUID testId) {
         return service.publish(testId);
@@ -87,4 +93,5 @@ public class AssessmentController {
                                         @NotBlank @Pattern(regexp="EASY|MEDIUM|HARD") String difficulty,
                                         @NotNull @Size(min=4,max=4) List<@Valid OptionRequest> options) {}
     public record AnswerRequest(@NotNull UUID optionId) {}
+    public record GenerateRequest(@Size(max=1000) String instructions) {}
 }
