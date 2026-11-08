@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiRequest } from '../../api/client';
+import { ServerSettingsPanel } from './ServerSettingsPanel';
 import type { LeaderboardEntry, GrandTestRequest, FeedbackItem } from '../../types';
 import {
   Sparkles,
@@ -27,7 +28,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions' | 'settings'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -388,10 +389,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Segmented Pill Navigation Tabs */}
-      <div className="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/80 mb-8 overflow-x-auto gap-1 backdrop-blur-md">
+      <div className="sticky top-16 z-30 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 bg-slate-950/95 p-2 rounded-2xl border border-slate-800/90 mb-8 gap-1.5 backdrop-blur-xl shadow-xl shadow-black/20">
         <button
           onClick={() => setTab('tests')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-heading text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
             tab === 'tests'
               ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -493,6 +494,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
               {openFeedbacksCount}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setTab('settings')}
+          aria-current={tab === 'settings' ? 'page' : undefined}
+          className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-heading text-[11px] sm:text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            tab === 'settings'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Server className="w-4 h-4" />
+          Server Settings
         </button>
       </div>
 
@@ -1249,6 +1262,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           )}
         </div>
       )}
+
+      {tab === 'settings' && <ServerSettingsPanel />}
 
       {/* TAB 5: Student Feedbacks */}
       {tab === 'feedbacks' && (
