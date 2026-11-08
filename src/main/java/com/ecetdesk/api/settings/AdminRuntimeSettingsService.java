@@ -23,12 +23,14 @@ public class AdminRuntimeSettingsService {
     public AdminRuntimeSettingsService(JdbcTemplate jdbc,
             @Value("${app.ai.openrouter.api-key:}") String envApiKey,
             @Value("${app.ai.openrouter.model:openai/gpt-4o-mini}") String envModel,
-            @Value("${app.security.jwt.secret-base64:}") String jwtSecret) {
+            @Value("${app.security.jwt.secret-base64:}") String jwtSecret,
+            @Value("${app.security.settings-encryption-key-base64:}") String settingsEncryptionSecret) {
         this.jdbc = jdbc;
         this.envApiKey = envApiKey;
         this.envModel = envModel == null || envModel.isBlank() ? "openai/gpt-4o-mini" : envModel;
         try {
-            byte[] material = jwtSecret.isBlank() ? "local-development-only-change-jwt-secret".getBytes(StandardCharsets.UTF_8) : Base64.getDecoder().decode(jwtSecret);
+            String selectedSecret = settingsEncryptionSecret.isBlank() ? jwtSecret : settingsEncryptionSecret;
+            byte[] material = selectedSecret.isBlank() ? "local-development-only-change-jwt-secret".getBytes(StandardCharsets.UTF_8) : Base64.getDecoder().decode(selectedSecret);
             this.encryptionKey = new SecretKeySpec(MessageDigest.getInstance("SHA-256").digest(material), "AES");
         } catch (Exception ex) { throw new IllegalStateException("Unable to initialize settings encryption", ex); }
     }
