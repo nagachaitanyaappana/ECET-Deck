@@ -56,9 +56,13 @@ public class AdminRuntimeSettingsService {
 
     public java.util.Map<String,Object> getSettings() {
         boolean configured = !getApiKey().isBlank();
+        Integer overrideCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM admin_runtime_settings WHERE setting_key='openrouter_api_key'",
+            Integer.class);
+        String source = overrideCount != null && overrideCount > 0 ? "Dashboard"
+            : (configured ? "Environment" : "Not configured");
         return java.util.Map.of("provider", "OpenRouter", "apiKeyConfigured", configured,
-            "apiKeySource", configured && !environmentApiKey.isBlank() ? "Environment or dashboard" : (configured ? "Dashboard" : "Not configured"),
-            "model", getModel(), "restartRequired", false);
+            "apiKeySource", source, "model", getModel(), "restartRequired", false);
     }
 
     @Transactional
