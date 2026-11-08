@@ -24,7 +24,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -41,6 +41,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   // Data states
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [testAttempts, setTestAttempts] = useState<any[]>([]);
+  const [pyqAttempts, setPyqAttempts] = useState<any[]>([]);
+  const [pyqReview, setPyqReview] = useState<any | null>(null);
   const [selectedTestId, setSelectedTestId] = useState<string>('');
   const [availableTests, setAvailableTests] = useState<any[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -97,6 +99,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           setSelectedTestId(tests[0].id);
           loadTestAttempts(tests[0].id);
         }
+      } else if (tab === 'pyq') {
+        const data = await apiRequest<any[]>('/api/v1/admin/pyq/attempts');
+        setPyqAttempts(data);
+        setPyqReview(null);
       } else if (tab === 'requests') {
         const data = await apiRequest<GrandTestRequest[]>('/api/v1/admin/requests/grand-test');
         setRequests(data);
@@ -330,6 +336,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </button>
 
         <button
+          onClick={() => setTab('pyq')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <BookOpen className="w-4 h-4" />
+          PYQ Monitoring
+        </button>
+
+        <button
           onClick={() => setTab('feedbacks')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'feedbacks'
@@ -371,6 +385,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </div>
       ) : (
         <>
+          {tab === 'pyq' && (
+            <div className="space-y-5">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <h2 className="text-lg font-bold text-slate-900">PYQ Challenge monitoring</h2>
+                <p className="text-sm text-slate-500 mt-1">Only administrators can view these attempts. Refresh the tab to see the latest student activity.</p>
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs uppercase text-slate-500 bg-slate-50"><tr><th className="p-3">Student</th><th className="p-3">Status</th><th className="p-3">Score</th><th className="p-3">Started</th><th className="p-3">Action</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pyqAttempts.map((a) => (
+                        <tr key={a.attemptId}>
+                          <td className="p-3"><div className="font-semibold text-slate-900">{a.studentName}</div><div className="text-xs text-slate-500">{a.studentEmail}</div></td>
+                          <td className="p-3">{a.status}</td>
+                          <td className="p-3">{a.score ?? '—'} / {a.totalQuestions}</td>
+                          <td className="p-3">{new Date(a.startedAt).toLocaleString()}</td>
+                          <td className="p-3"><button onClick={async()=>{try{setPyqReview(await apiRequest<any>(`/api/v1/admin/pyq/attempts/${a.attemptId}/review`));}catch(e:any){setMessage({type:'error',text:e.message});}}} className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold">View answers</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {pyqAttempts.length===0&&<p className="text-sm text-slate-500 py-5">No PYQ attempts yet.</p>}
+                </div>
+              </div>
+              {pyqReview&&(
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold text-slate-900">{pyqReview.studentName} · Attempt review</h3><p className="text-xs text-slate-500">{pyqReview.studentEmail} · {pyqReview.status} · Score {pyqReview.score ?? 'pending'}</p></div><button onClick={()=>setPyqReview(null)} className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm">Close</button></div>
+                  <div className="space-y-3 mt-4 max-h-[650px] overflow-y-auto">
+                    {(pyqReview.questions||[]).map((q:any)=><div key={q.questionId} className="border border-slate-100 rounded-xl p-4"><div className="text-xs text-slate-500 mb-1">Q{q.questionOrder} · {q.subject} · PYQ {q.sourceYear}</div><p className="text-sm font-medium text-slate-900">{q.questionText}</p><p className="text-xs mt-2 text-slate-600">Student answer: {q.selectedOptionText||'Unanswered'}</p><p className="text-xs text-emerald-700 mt-1">Correct answer: {q.correctOptionText}</p></div>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: Tests */}
           {tab === 'tests' && (
             <div className="space-y-6">
