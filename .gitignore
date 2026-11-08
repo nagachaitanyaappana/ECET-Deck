@@ -19,7 +19,9 @@ target/
 Thumbs.db
 
 ### Local secrets ###
+# Keep real workspace environment files out of Git.
 .env
 .env.*
+# The example contains placeholders only and is safe to commit.
 !.env.example
 application-local.properties
