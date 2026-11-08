@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiRequest } from '../../api/client';
 import type { LeaderboardEntry, GrandTestRequest, FeedbackItem } from '../../types';
 import {
@@ -16,7 +16,10 @@ import {
   Calendar,
   RefreshCw,
   FileText,
-  MessageSquare
+  MessageSquare,
+  UploadCloud,
+  Database,
+  PlusCircle
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -24,7 +27,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -41,12 +44,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   // Data states
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [testAttempts, setTestAttempts] = useState<any[]>([]);
+  const [pyqAttempts, setPyqAttempts] = useState<any[]>([]);
+  const [pyqReview, setPyqReview] = useState<any | null>(null);
+  const [pyqPapers, setPyqPapers] = useState<any[]>([]);
+  const [paperTitle, setPaperTitle] = useState('');
+  const [paperYear, setPaperYear] = useState(String(new Date().getFullYear()));
+  const [paperType, setPaperType] = useState<'QUESTION_PAPER' | 'ANSWER_KEY'>('QUESTION_PAPER');
+  const [paperSource, setPaperSource] = useState('');
+  const [paperAttribution, setPaperAttribution] = useState('');
+  const [paperUrl, setPaperUrl] = useState('');
+  const [uploadingPaper, setUploadingPaper] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState<string>('');
   const [availableTests, setAvailableTests] = useState<any[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [pendingRequestsCount, setPendingRequestsCount] = useState<number>(0);
   const [openFeedbacksCount, setOpenFeedbacksCount] = useState<number>(0);
+
+  // Question Bank states
+  const [pyqQuestions, setPyqQuestions] = useState<any[]>([]);
+  const [questionSubjectFilter, setQuestionSubjectFilter] = useState('');
+  const [questionYearFilter, setQuestionYearFilter] = useState('');
+  const [bulkJsonText, setBulkJsonText] = useState('');
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [importingBulk, setImportingBulk] = useState(false);
 
   // Grand test fulfillment state
   const [fulfillingId, setFulfillingId] = useState<string | null>(null);
@@ -97,6 +118,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           setSelectedTestId(tests[0].id);
           loadTestAttempts(tests[0].id);
         }
+      } else if (tab === 'papers') {
+        const data = await apiRequest<any[]>('/api/v1/admin/pyq/papers');
+        setPyqPapers(data);
+      } else if (tab === 'pyq') {
+        const data = await apiRequest<any[]>('/api/v1/admin/pyq/attempts');
+        setPyqAttempts(data);
+        setPyqReview(null);
       } else if (tab === 'requests') {
         const data = await apiRequest<GrandTestRequest[]>('/api/v1/admin/requests/grand-test');
         setRequests(data);
@@ -105,6 +133,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         const data = await apiRequest<FeedbackItem[]>('/api/v1/admin/feedbacks');
         setFeedbacks(data);
         setOpenFeedbacksCount(data.filter((f) => f.status === 'OPEN').length);
+      } else if (tab === 'questions') {
+        const queryParams = new URLSearchParams();
+        if (questionSubjectFilter) queryParams.set('subject', questionSubjectFilter);
+        if (questionYearFilter) queryParams.set('year', questionYearFilter);
+        queryParams.set('includeUnverified', 'true');
+        const qs = await apiRequest<any[]>(`/api/v1/admin/pyq/questions?${queryParams.toString()}`);
+        setPyqQuestions(qs);
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to load content' });
@@ -122,6 +157,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     }
   };
 
+  const handleRegisterPaper = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setUploadingPaper(true); setMessage(null);
+    try {
+      await apiRequest('/api/v1/admin/pyq/papers/link', { method: 'POST', body: JSON.stringify({
+        title: paperTitle.trim(), examYear: Number(paperYear), paperType, googleDriveUrl: paperUrl.trim(),
+        sourceName: paperSource.trim(), attribution: paperAttribution.trim()
+      }) });
+      setMessage({ type: 'success', text: 'Google Drive paper link added to the student library.' });
+      setPaperTitle(''); setPaperUrl(''); setPaperSource(''); setPaperAttribution('');
+      const papers = await apiRequest<any[]>('/api/v1/admin/pyq/papers');
+      setPyqPapers(papers);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Could not register the Google Drive paper.' });
+    } finally { setUploadingPaper(false); }
+  };
+
+  const handleBulkImportQuestions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportingBulk(true);
+    setMessage(null);
+    try {
+      const parsed = JSON.parse(bulkJsonText.trim());
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Please provide a non-empty JSON array of questions.');
+      }
+      const res = await apiRequest<any[]>('/api/v1/admin/pyq/questions/bulk', {
+        method: 'POST',
+        body: JSON.stringify(parsed)
+      });
+      setMessage({ type: 'success', text: `Successfully imported ${res.length} verified questions into the PYQ Bank!` });
+      setBulkJsonText('');
+      setShowBulkModal(false);
+      loadTabContent();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Bulk question import failed. Please check JSON syntax.' });
+    } finally {
+      setImportingBulk(false);
+    }
+  };
+
+  const verifiedCounts = useMemo(() => {
+    const counts = { DCME: 0, MATHEMATICS: 0, PHYSICS: 0, CHEMISTRY: 0 };
+    for (const q of pyqQuestions) {
+      if (q.verified && counts[q.subject as keyof typeof counts] !== undefined) {
+        counts[q.subject as keyof typeof counts]++;
+      }
+    }
+    return counts;
+  }, [pyqQuestions]);
   // 1-Click Automated Generation
   const handleAutoGenerate = async (type: 'DAILY' | 'GRAND', dateOverride?: string) => {
     setGeneratingType(type);
@@ -330,6 +415,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </button>
 
         <button
+          onClick={() => setTab('papers')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'papers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <UploadCloud className="w-4 h-4" />
+          PYQ Papers
+        </button>
+
+        <button
+          onClick={() => setTab('questions')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'questions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <Database className="w-4 h-4" />
+          PYQ Bank
+        </button>
+
+        <button
+          onClick={() => setTab('pyq')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <BookOpen className="w-4 h-4" />
+          PYQ Monitoring
+        </button>
+
+        <button
           onClick={() => setTab('feedbacks')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'feedbacks'
@@ -371,6 +480,250 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </div>
       ) : (
         <>
+          {tab === 'papers' && (
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
+              <form onSubmit={handleRegisterPaper} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+                <div><h2 className="text-lg font-bold text-slate-900">Add a Google Drive paper</h2><p className="text-sm text-slate-500 mt-1">Keep the PDF in Google Drive and register its sharing link here.</p></div>
+                <label className="block text-sm font-medium text-slate-700">Paper title<input required maxLength={180} value={paperTitle} onChange={e=>setPaperTitle(e.target.value)} placeholder="ECET DCME 2025 Question Paper" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-sm font-medium text-slate-700">Exam year<input required type="number" min="2000" max="2100" value={paperYear} onChange={e=>setPaperYear(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                  <label className="block text-sm font-medium text-slate-700">Document type<select value={paperType} onChange={e=>setPaperType(e.target.value as any)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="QUESTION_PAPER">Question paper</option><option value="ANSWER_KEY">Answer key</option></select></label>
+                </div>
+                <label className="block text-sm font-medium text-slate-700">Google Drive sharing link<input required type="url" value={paperUrl} onChange={e=>setPaperUrl(e.target.value)} placeholder="https://drive.google.com/file/d/..." className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <label className="block text-sm font-medium text-slate-700">Source / publisher (optional)<input value={paperSource} onChange={e=>setPaperSource(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <label className="block text-sm font-medium text-slate-700">Attribution / notes (optional)<textarea value={paperAttribution} onChange={e=>setPaperAttribution(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <button disabled={uploadingPaper} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 disabled:opacity-50">{uploadingPaper?'Adding link...':'Add paper to library'}</button>
+                <p className="text-xs text-slate-400">Set Drive access to “Anyone with the link — Viewer” so students can open the PDF.</p>
+              </form>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <h2 className="text-lg font-bold text-slate-900">Published papers</h2>
+                <div className="divide-y divide-slate-100 mt-3">
+                  {pyqPapers.map(p=><div key={p.id} className="py-3 flex items-center justify-between gap-3"><div><div className="font-semibold text-sm text-slate-800">{p.title}</div><div className="text-xs text-slate-500">{p.examYear} · {p.paperType==='ANSWER_KEY'?'Answer key':'Question paper'} · {p.curriculum} · {p.active?'Published':'Hidden'}</div></div><div className="flex items-center gap-3">{p.publicUrl&&<a href={p.publicUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-700">Open PDF</a>}<button onClick={async()=>{try{await apiRequest('/api/v1/admin/pyq/papers/'+p.id+'/active',{method:'PATCH',body:JSON.stringify({active:!p.active})});const updated=await apiRequest<any[]>('/api/v1/admin/pyq/papers');setPyqPapers(updated);}catch(e:any){setMessage({type:'error',text:e.message||'Could not update paper.'});}}} className="text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1.5">{p.active?'Hide':'Publish'}</button></div></div>)}
+                  {pyqPapers.length===0&&<p className="text-sm text-slate-500 py-5">No papers registered yet.</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab === 'questions' && (
+            <div className="space-y-6">
+              {/* Blueprint Target Status Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">PYQ Exam Blueprint Readiness (C23)</h2>
+                    <p className="text-sm text-slate-500">
+                      The randomized 200-question exam requires verified questions across 4 subjects.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowBulkModal(!showBulkModal)}
+                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    {showBulkModal ? 'Close Importer' : 'Bulk Import Questions'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                  {[
+                    { subject: 'DCME', target: 100, current: verifiedCounts.DCME },
+                    { subject: 'MATHEMATICS', target: 50, current: verifiedCounts.MATHEMATICS },
+                    { subject: 'PHYSICS', target: 25, current: verifiedCounts.PHYSICS },
+                    { subject: 'CHEMISTRY', target: 25, current: verifiedCounts.CHEMISTRY }
+                  ].map((item) => {
+                    const isReady = item.current >= item.target;
+                    const pct = Math.min(100, Math.round((item.current / item.target) * 100));
+                    return (
+                      <div key={item.subject} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+                        <div className="flex justify-between items-center text-xs font-semibold text-slate-600">
+                          <span>{item.subject}</span>
+                          <span className={isReady ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                            {item.current} / {item.target}
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${isReady ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {isReady ? '✓ Blueprint satisfied' : `Need ${item.target - item.current} more`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bulk Importer Form */}
+              {showBulkModal && (
+                <form onSubmit={handleBulkImportQuestions} className="bg-white rounded-2xl border border-blue-200 p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Bulk Import Questions (JSON)</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Import 1 to 250 verified questions with 4 options each into the C23 question bank.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkJsonText(JSON.stringify([
+                          {
+                            subject: "DCME",
+                            topic: "Data Structures",
+                            curriculum: "C23",
+                            questionText: "Which data structure follows the LIFO principle?",
+                            explanation: "Stack follows Last In First Out.",
+                            sourceYear: 2025,
+                            sourcePaper: "AP ECET 2025",
+                            sourceQuestionNumber: 1,
+                            difficulty: "MEDIUM",
+                            verified: true,
+                            options: [
+                              { text: "Queue", correct: false },
+                              { text: "Stack", correct: true },
+                              { text: "Tree", correct: false },
+                              { text: "Graph", correct: false }
+                            ]
+                          }
+                        ], null, 2));
+                      }}
+                      className="text-xs text-blue-600 hover:underline font-semibold"
+                    >
+                      Load Sample Template
+                    </button>
+                  </div>
+                  <textarea
+                    required
+                    rows={8}
+                    value={bulkJsonText}
+                    onChange={(e) => setBulkJsonText(e.target.value)}
+                    placeholder='[ { "subject": "DCME", "topic": "OS", "curriculum": "C23", "questionText": "...", "sourceYear": 2025, "sourcePaper": "...", "verified": true, "options": [ ... ] } ]'
+                    className="w-full font-mono text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkModal(false)}
+                      className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={importingBulk}
+                      className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm disabled:opacity-50"
+                    >
+                      {importingBulk ? 'Importing Questions...' : 'Submit Batch Import'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Question Browser & Filter */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Questions in Bank</h3>
+                    <p className="text-xs text-slate-500">{pyqQuestions.length} questions matching filters</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={questionSubjectFilter}
+                      onChange={(e) => setQuestionSubjectFilter(e.target.value)}
+                      className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white text-slate-700"
+                    >
+                      <option value="">All Subjects</option>
+                      <option value="DCME">DCME</option>
+                      <option value="MATHEMATICS">Mathematics</option>
+                      <option value="PHYSICS">Physics</option>
+                      <option value="CHEMISTRY">Chemistry</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Year (e.g. 2025)"
+                      value={questionYearFilter}
+                      onChange={(e) => setQuestionYearFilter(e.target.value)}
+                      className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 w-28 bg-white text-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={loadTabContent}
+                      className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+                      title="Refresh"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {pyqQuestions.length === 0 ? (
+                  <div className="py-10 text-center text-slate-500 text-sm">
+                    No questions found. Use the Bulk Importer above to populate the verified question pool.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                    {pyqQuestions.map((q) => (
+                      <div key={q.id} className="py-3.5 space-y-1">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-700">{q.subject}</span>
+                            {q.topic && <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">{q.topic}</span>}
+                            <span>· {q.sourcePaper || `PYQ ${q.sourceYear}`}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-400">{q.difficulty}</span>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${q.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {q.verified ? 'Verified' : 'Unverified'}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-slate-800 font-medium leading-relaxed">{q.questionText}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {tab === 'pyq' && (
+            <div className="space-y-5">
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <h2 className="text-lg font-bold text-slate-900">PYQ Challenge monitoring</h2>
+                <p className="text-sm text-slate-500 mt-1">Only administrators can view these attempts. Refresh the tab to see the latest student activity.</p>
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs uppercase text-slate-500 bg-slate-50"><tr><th className="p-3">Student</th><th className="p-3">Status</th><th className="p-3">Score</th><th className="p-3">Started</th><th className="p-3">Action</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pyqAttempts.map((a) => (
+                        <tr key={a.attemptId}>
+                          <td className="p-3"><div className="font-semibold text-slate-900">{a.studentName}</div><div className="text-xs text-slate-500">{a.studentEmail}</div></td>
+                          <td className="p-3">{a.status}</td>
+                          <td className="p-3">{a.score ?? '—'} / {a.totalQuestions}</td>
+                          <td className="p-3">{new Date(a.startedAt).toLocaleString()}</td>
+                          <td className="p-3"><button onClick={async()=>{try{setPyqReview(await apiRequest<any>(`/api/v1/admin/pyq/attempts/${a.attemptId}/review`));}catch(e:any){setMessage({type:'error',text:e.message});}}} className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold">View answers</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {pyqAttempts.length===0&&<p className="text-sm text-slate-500 py-5">No PYQ attempts yet.</p>}
+                </div>
+              </div>
+              {pyqReview&&(
+                <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center justify-between gap-3"><div><h3 className="font-bold text-slate-900">{pyqReview.studentName} · Attempt review</h3><p className="text-xs text-slate-500">{pyqReview.studentEmail} · {pyqReview.status} · Score {pyqReview.score ?? 'pending'}</p></div><button onClick={()=>setPyqReview(null)} className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm">Close</button></div>
+                  <div className="space-y-3 mt-4 max-h-[650px] overflow-y-auto">
+                    {(pyqReview.questions||[]).map((q:any)=><div key={q.questionId} className="border border-slate-100 rounded-xl p-4"><div className="text-xs text-slate-500 mb-1">Q{q.questionOrder} · {q.subject} · PYQ {q.sourceYear}</div><p className="text-sm font-medium text-slate-900">{q.questionText}</p><p className="text-xs mt-2 text-slate-600">Student answer: {q.selectedOptionText||'Unanswered'}</p><p className="text-xs text-emerald-700 mt-1">Correct answer: {q.correctOptionText}</p></div>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: Tests */}
           {tab === 'tests' && (
             <div className="space-y-6">

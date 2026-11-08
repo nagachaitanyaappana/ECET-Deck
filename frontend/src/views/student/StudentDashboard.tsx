@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../api/client';
 import type { AvailableTest, StudentResultSummary, GrandTestRequest, FeedbackItem } from '../../types';
+import { PyqStudentPanel } from './PyqStudentPanel';
+import { StudentAnalyticsPanel } from './StudentAnalyticsPanel';
 import {
   Clock,
   CheckCircle2,
@@ -9,6 +11,7 @@ import {
   ArrowRight,
   BookOpen,
   Award,
+  Activity,
   AlertCircle,
   Zap,
   MessageSquare,
@@ -26,7 +29,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onStartTest,
   onReviewAttempt,
 }) => {
-  const [tab, setTab] = useState<'available' | 'results' | 'request' | 'feedback'>('available');
+  const [tab, setTab] = useState<'available' | 'pyq' | 'results' | 'analytics' | 'request' | 'feedback'>('available');
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [results, setResults] = useState<StudentResultSummary[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -59,6 +62,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (tab === 'available') {
         const data = await apiRequest<AvailableTest[]>('/api/v1/tests');
         setTests(data);
+      } else if (tab === 'analytics') {
+        // The analytics panel loads its own student-scoped summary.
       } else if (tab === 'results') {
         const data = await apiRequest<StudentResultSummary[]>('/api/v1/my/results');
         setResults(data);
@@ -145,10 +150,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
       {/* Top Welcome / Motivation banner */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg shadow-blue-500/15 mb-7">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ECET Preparation Arena</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Paradox ECET Deck</h1>
         <p className="text-blue-100 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
           Sharpen your skills across DCME (100 marks), Math (50), Physics (25), and Chemistry (25).
-          Write daily mocks, learn from wrong answers, and improve your rank!
+          Practice with previous-year questions, take mock tests, and track your personal progress.
         </p>
       </div>
 
@@ -169,6 +174,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               {tests.length}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => setTab('pyq')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <BookOpen className="w-4 h-4" />
+          PYQ Challenge
+        </button>
+
+        <button
+          onClick={() => setTab('analytics')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+            tab === 'analytics' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          My Progress
         </button>
 
         <button
@@ -296,6 +319,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             ))}
           </div>
         )
+      ) : tab === 'pyq' ? (
+        <PyqStudentPanel />
+      ) : tab === 'analytics' ? (
+        <StudentAnalyticsPanel />
       ) : tab === 'results' ? (
         /* Results Tab */
         results.length === 0 ? (

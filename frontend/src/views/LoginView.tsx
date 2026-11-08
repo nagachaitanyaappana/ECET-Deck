@@ -71,10 +71,10 @@ export const LoginView: React.FC = () => {
           </div>
         </div>
         <h2 className="mt-4 text-center text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Paradox
+          Paradox ECET Deck
         </h2>
         <p className="mt-1 text-center text-sm text-slate-600">
-          Diploma in Computer Engineering (DCME) Practice
+          Prepare. Practice. Progress. · ECET Preparation
         </p>
       </div>
 
