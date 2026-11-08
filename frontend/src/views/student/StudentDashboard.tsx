@@ -85,10 +85,15 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     setStartingTestId(testId);
     setError(null);
     try {
-      const response = await apiRequest<{ attemptId: string }>(`/api/v1/tests/${testId}/attempts`, {
-        method: 'POST',
-      });
-      onStartTest(response.attemptId);
+      const existingTest = tests.find((test) => test.id === testId);
+      if (existingTest?.attemptId && existingTest.attemptStatus === 'IN_PROGRESS') {
+        onStartTest(existingTest.attemptId);
+      } else {
+        const response = await apiRequest<{ attemptId: string }>(`/api/v1/tests/${testId}/attempts`, {
+          method: 'POST',
+        });
+        onStartTest(response.attemptId);
+      }
     } catch (err: any) {
       setError(err.message || 'Could not start test. You may have already attempted it.');
     } finally {
@@ -310,7 +315,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>Start Practice Test</span>
+                      <span>{t.attemptStatus === 'IN_PROGRESS' ? 'Resume Test' : 'Start Practice Test'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
