@@ -62,7 +62,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (tab === 'available') {
         const data = await apiRequest<AvailableTest[]>('/api/v1/tests');
         setTests(data);
-      } else if (tab === 'analytics') {\n        // The analytics panel loads its own student-scoped summary.\n      } else if (tab === 'results') {
+      } else if (tab === 'analytics') {
+        // The analytics panel loads its own student-scoped summary.
+      } else if (tab === 'results') {
         const data = await apiRequest<StudentResultSummary[]>('/api/v1/my/results');
         setResults(data);
       } else if (tab === 'request') {
@@ -319,7 +321,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         )
       ) : tab === 'pyq' ? (
         <PyqStudentPanel />
-      ) : tab === 'analytics' ? (\n        <StudentAnalyticsPanel />\n      ) : tab === 'results' ? (
+      ) : tab === 'analytics' ? (
+        <StudentAnalyticsPanel />
+      ) : tab === 'results' ? (
         /* Results Tab */
         results.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
