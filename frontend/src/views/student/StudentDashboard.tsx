@@ -13,7 +13,8 @@ import {
   Zap,
   MessageSquare,
   Send,
-  Sparkles
+  Sparkles,
+  Mail
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -452,23 +453,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={submittingRequest}
-                  className="py-3 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
-                >
-                  {submittingRequest ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Submitting Request...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      Request Grand Test (200 Questions)
-                    </>
-                  )}
-                </button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={submittingRequest}
+                    className="py-3 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.99] transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {submittingRequest ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        Request Grand Test
+                      </>
+                    )}
+                  </button>
+
+                  <a
+                    href={`mailto:paradoxofficial2008@gmail.com?subject=${encodeURIComponent('[ECET Desk] Grand Test Request')}&body=${encodeURIComponent(requestNote || 'Hi, we are ready to write the 200-question ECET Grand Test!')}`}
+                    className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 font-medium underline"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Or email paradoxofficial2008@gmail.com directly
+                  </a>
+                </div>
               </form>
             </div>
           )}
@@ -598,23 +609,33 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={submittingFeedback}
-                className="py-2.5 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
-              >
-                {submittingFeedback ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Send Feedback
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingFeedback}
+                  className="py-2.5 px-5 rounded-xl text-xs sm:text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {submittingFeedback ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Send Feedback
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={`mailto:paradoxofficial2008@gmail.com?subject=${encodeURIComponent(`[ECET Desk Feedback] ${fbCategory}: ${fbSubject || 'Student Feedback'}`)}&body=${encodeURIComponent(fbMessage || '')}`}
+                  className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 font-medium underline"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Or email paradoxofficial2008@gmail.com directly
+                </a>
+              </div>
             </form>
           </div>
 

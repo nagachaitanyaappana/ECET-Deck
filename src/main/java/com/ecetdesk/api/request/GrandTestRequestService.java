@@ -1,25 +1,33 @@
 package com.ecetdesk.api.request;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import com.ecetdesk.api.assessment.AssessmentController;
 import com.ecetdesk.api.assessment.AssessmentService;
+import com.ecetdesk.api.notification.EmailNotificationService;
 
 @Service
 public class GrandTestRequestService {
     private final JdbcTemplate jdbc;
     private final AssessmentService assessmentService;
+    private final EmailNotificationService emailService;
 
-    public GrandTestRequestService(JdbcTemplate jdbc, AssessmentService assessmentService) {
+    public GrandTestRequestService(JdbcTemplate jdbc, AssessmentService assessmentService,
+                                   EmailNotificationService emailService) {
         this.jdbc = jdbc;
         this.assessmentService = assessmentService;
+        this.emailService = emailService;
     }
 
     public Map<String, Object> createRequest(String studentEmail, GrandTestRequestController.CreateRequestPayload payload) {
-        UUID studentId = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?)", UUID.class, studentEmail);
+        Map<String, Object> student = jdbc.queryForMap(
+            "SELECT id, display_name FROM users WHERE lower(email)=lower(?)", studentEmail);
+        UUID studentId = (UUID) student.get("id");
+        String studentName = (String) student.get("display_name");
 
         Integer pendingCount = jdbc.queryForObject(
             "SELECT COUNT(*) FROM grand_test_requests WHERE student_id=? AND status='PENDING'",
@@ -36,11 +44,15 @@ public class GrandTestRequestService {
             id, studentId, note
         );
 
+        // Dispatch email notification to paradoxofficial2008@gmail.com
+        CompletableFuture.runAsync(() ->
+            emailService.sendGrandTestRequestNotification(studentName, studentEmail, note));
+
         return Map.of(
             "id", id,
             "status", "PENDING",
             "note", note == null ? "" : note,
-            "message", "Grand Test request submitted! The admin will review and generate the 200-question test."
+            "message", "Grand Test request sent! Email notification dispatched to paradoxofficial2008@gmail.com."
         );
     }
 

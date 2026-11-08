@@ -1,40 +1,53 @@
 package com.ecetdesk.api.feedback;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.ecetdesk.api.notification.EmailNotificationService;
 
 @Service
 public class FeedbackService {
     private final JdbcTemplate jdbc;
+    private final EmailNotificationService emailService;
 
-    public FeedbackService(JdbcTemplate jdbc) {
+    public FeedbackService(JdbcTemplate jdbc, EmailNotificationService emailService) {
         this.jdbc = jdbc;
+        this.emailService = emailService;
     }
 
     public Map<String, Object> submitFeedback(String userEmail, FeedbackController.CreateFeedbackRequest request) {
-        UUID userId = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?)", UUID.class, userEmail);
+        Map<String, Object> user = jdbc.queryForMap(
+            "SELECT id, display_name FROM users WHERE lower(email)=lower(?)", userEmail);
+        UUID userId = (UUID) user.get("id");
+        String userName = (String) user.get("display_name");
+
         UUID id = UUID.randomUUID();
-        String category = request.category() == null || request.category().isBlank()
+        String rawCat = request.category() == null || request.category().isBlank()
             ? "GENERAL"
             : request.category().trim().toUpperCase(Locale.ROOT);
-        if (!Set.of("GENERAL", "QUESTION_ERROR", "FEATURE_REQUEST", "BUG").contains(category)) {
-            category = "GENERAL";
-        }
+        final String category = Set.of("GENERAL", "QUESTION_ERROR", "FEATURE_REQUEST", "BUG").contains(rawCat)
+            ? rawCat
+            : "GENERAL";
 
         jdbc.update("""
             INSERT INTO feedbacks(id, user_id, category, subject, message, status)
             VALUES (?, ?, ?, ?, ?, 'OPEN')
             """, id, userId, category, request.subject().trim(), request.message().trim());
 
+        // Dispatch email notification to paradoxofficial2008@gmail.com
+        CompletableFuture.runAsync(() ->
+            emailService.sendFeedbackNotification(
+                userName, userEmail, category, request.subject().trim(), request.message().trim()));
+
         return Map.of(
             "id", id,
             "category", category,
             "subject", request.subject().trim(),
             "status", "OPEN",
-            "message", "Thank you for your feedback! The admin has received it."
+            "message", "Feedback submitted! Email notification dispatched to paradoxofficial2008@gmail.com."
         );
     }
 
