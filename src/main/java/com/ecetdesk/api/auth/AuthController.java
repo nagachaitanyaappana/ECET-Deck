@@ -1,6 +1,8 @@
 package com.ecetdesk.api.auth;
 
+import com.ecetdesk.api.user.UserAccount;
 import com.ecetdesk.api.user.UserRepository;
+import com.ecetdesk.api.user.UserRole;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,12 +21,28 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository users;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
-                          UserRepository users) {
+                          UserRepository users, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.users = users;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RegistrationResponse register(@Valid @RequestBody RegistrationRequest request) {
+        String email = request.email().trim().toLowerCase();
+        if (users.existsByEmailIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
+        }
+
+        UserAccount account = users.save(new UserAccount(email,
+                passwordEncoder.encode(request.password()), request.displayName(), UserRole.STUDENT));
+        return new RegistrationResponse(account.getId(), account.getEmail(),
+                account.getDisplayName(), account.getRole().name());
     }
 
     @PostMapping("/login")
@@ -41,6 +60,10 @@ public class AuthController {
         }
     }
 
+    public record RegistrationRequest(@NotBlank @Email @Size(max = 320) String email,
+                                      @NotBlank @Size(min = 10, max = 100) String password,
+                                      @NotBlank @Size(max = 100) String displayName) {}
+    public record RegistrationResponse(java.util.UUID userId, String email, String displayName, String role) {}
     public record LoginRequest(@NotBlank @Email String email,
                                @NotBlank @Size(max = 100) String password) {}
     public record LoginResponse(String accessToken, String tokenType,
