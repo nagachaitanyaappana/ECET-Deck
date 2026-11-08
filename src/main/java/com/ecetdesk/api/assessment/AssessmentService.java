@@ -107,7 +107,7 @@ public class AssessmentService {
     public Map<String,Object> startAttempt(UUID testId, String email) {
         Map<String,Object> test = test(testId);
         if (!"PUBLISHED".equals(test.get("status"))) throw conflict("This test is not available.");
-        if ("DAILY".equals(test.get("test_type")) && !LocalDate.now().equals(test.get("scheduled_date")))
+        if ("DAILY".equals(test.get("test_type")) && !LocalDate.now().equals(((java.sql.Date)test.get("scheduled_date")).toLocalDate()))
             throw conflict("This daily mock is not available today.");
         UUID student = studentId(email);
         List<Map<String,Object>> existing = jdbc.queryForList("SELECT id,status FROM test_attempts WHERE test_id=? AND student_id=?",testId,student);
