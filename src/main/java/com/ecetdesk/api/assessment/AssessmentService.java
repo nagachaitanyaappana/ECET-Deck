@@ -325,13 +325,19 @@ public class AssessmentService {
         return Map.of("id",testId,"status","PUBLISHED","questionCount",expected);
     }
 
-    public List<Map<String,Object>> availableTests() {
+    public List<Map<String,Object>> availableTests(String email) {
+        UUID student = studentId(email);
         return jdbc.queryForList("""
-            SELECT id,title,test_type AS \"testType\",scheduled_date AS \"scheduledDate\",
-                   question_count AS \"questionCount\",duration_minutes AS \"durationMinutes\",total_marks AS \"totalMarks\"
-            FROM tests WHERE status='PUBLISHED' AND (test_type='GRAND' OR scheduled_date=?)
-            ORDER BY published_at DESC
-            """,LocalDate.now(ZoneId.of("Asia/Kolkata")));
+            SELECT t.id,t.title,t.test_type AS "testType",t.scheduled_date AS "scheduledDate",
+                   t.question_count AS "questionCount",t.duration_minutes AS "durationMinutes",
+                   t.total_marks AS "totalMarks",a.id AS "attemptId",a.status AS "attemptStatus"
+            FROM tests t
+            LEFT JOIN test_attempts a ON a.test_id=t.id AND a.student_id=?
+            WHERE t.status='PUBLISHED'
+              AND (t.test_type='GRAND' OR t.scheduled_date=?)
+              AND (a.id IS NULL OR a.status='IN_PROGRESS')
+            ORDER BY t.published_at DESC
+            """,student,LocalDate.now(ZoneId.of("Asia/Kolkata")));
     }
 
     @Transactional
