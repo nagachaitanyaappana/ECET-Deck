@@ -17,7 +17,7 @@ public class JwtService {
 
     public JwtService(
             @Value("${app.security.jwt.secret-base64}") String secretBase64,
-            @Value("${app.security.jwt.access-token-minutes:720}") long accessTokenMinutes) {
+            @Value("${app.security.jwt.access-token-minutes:43200}") long accessTokenMinutes) {
         if (secretBase64 == null || secretBase64.isBlank()) {
             throw new IllegalStateException("JWT_SECRET_BASE64 must be configured before starting the API.");
         }
