@@ -3,14 +3,19 @@ import { apiRequest } from '../../api/client';
 import type { LeaderboardEntry } from '../../types';
 import {
   Sparkles,
+  Zap,
   Send,
-  PlusCircle,
   Users,
   Trophy,
   BookOpen,
   CheckCircle2,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Clock,
+  Calendar,
+  RefreshCw,
+  FileText
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -20,14 +25,17 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
   const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard'>('tests');
 
-  // Test creation state
-  const [title, setTitle] = useState('');
-  const [testType, setTestType] = useState<'GRAND' | 'DAILY'>('DAILY');
-  const [scheduledDate, setScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // One-click AI Generation state
+  const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
   const [aiInstructions, setAiInstructions] = useState('');
-  const [creatingTest, setCreatingTest] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [customScheduledDate, setCustomScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [customTitle, setCustomTitle] = useState('');
+
+  // Draft operations state
   const [generatingForTestId, setGeneratingForTestId] = useState<string | null>(null);
   const [publishingTestId, setPublishingTestId] = useState<string | null>(null);
+  const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
 
   // Data states
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -38,6 +46,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysDailyMock = availableTests.find(
+    (t) => t.testType === 'DAILY' && t.scheduledDate === todayStr
+  );
+  const grandTestsCount = availableTests.filter((t) => t.testType === 'GRAND').length;
+
   useEffect(() => {
     loadTabContent();
   }, [tab]);
@@ -47,13 +61,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     setMessage(null);
     try {
       if (tab === 'tests') {
-        const tests = await apiRequest<any[]>('/api/v1/tests');
+        const tests = await apiRequest<any[]>('/api/v1/admin/tests');
         setAvailableTests(tests);
       } else if (tab === 'leaderboard') {
         const data = await apiRequest<LeaderboardEntry[]>('/api/v1/admin/analytics/leaderboard');
         setLeaderboard(data);
       } else if (tab === 'analytics') {
-        const tests = await apiRequest<any[]>('/api/v1/tests');
+        const tests = await apiRequest<any[]>('/api/v1/admin/tests');
         setAvailableTests(tests);
         if (tests.length > 0 && !selectedTestId) {
           setSelectedTestId(tests[0].id);
@@ -76,30 +90,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     }
   };
 
-  const handleCreateTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreatingTest(true);
+  // 1-Click Automated Generation
+  const handleAutoGenerate = async (type: 'DAILY' | 'GRAND', dateOverride?: string) => {
+    setGeneratingType(type);
     setMessage(null);
     try {
-      const payload: any = { title, testType };
-      if (testType === 'DAILY') {
-        payload.scheduledDate = scheduledDate;
+      const payload: any = {
+        testType: type,
+        instructions: aiInstructions.trim() || undefined,
+      };
+
+      if (type === 'DAILY') {
+        payload.scheduledDate = dateOverride || (showAdvanced ? customScheduledDate : todayStr);
       }
-      const created = await apiRequest<any>('/api/v1/admin/tests', {
+      if (showAdvanced && customTitle.trim()) {
+        payload.customTitle = customTitle.trim();
+      }
+
+      const res: any = await apiRequest('/api/v1/admin/tests/auto-generate', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
 
       setMessage({
         type: 'success',
-        text: `Created draft test "${created.title}". Now you can generate questions using AI!`,
+        text: res.message || `Successfully generated and published ${res.title} with ${res.questionCount} questions!`,
       });
-      setTitle('');
-      loadTabContent();
+      setCustomTitle('');
+      await loadTabContent();
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Failed to create test' });
+      setMessage({
+        type: 'error',
+        text: err.message || 'Automated question generation failed. Check OpenRouter connection.',
+      });
     } finally {
-      setCreatingTest(false);
+      setGeneratingType(null);
+    }
+  };
+
+  const handleDeleteTest = async (testId: string, testTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${testTitle}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingTestId(testId);
+    setMessage(null);
+    try {
+      await apiRequest(`/api/v1/admin/tests/${testId}`, { method: 'DELETE' });
+      setMessage({ type: 'success', text: `Deleted "${testTitle}" successfully.` });
+      await loadTabContent();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to delete test.' });
+    } finally {
+      setDeletingTestId(null);
     }
   };
 
@@ -141,14 +183,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
-      {/* Admin Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Control Center</h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Create question papers, generate MCQs with OpenRouter AI, and monitor student performance.
-          </p>
-        </div>
+      {/* Top Banner (Matches Student Dashboard) */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg shadow-blue-500/15 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Admin Control Center</h1>
+        <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
+          Generate complete question papers with a single click using OpenRouter AI, publish them instantly, and monitor student performance.
+        </p>
       </div>
 
       {/* Tabs */}
@@ -215,135 +255,278 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       ) : (
         <>
           {/* TAB 1: Tests */}
-      {tab === 'tests' && (
-        <div className="space-y-6">
-          {/* Create Test Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-            <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-blue-600" />
-              Create New Test Paper
-            </h2>
-
-            <form onSubmit={handleCreateTest} className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Test Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Daily Mock - Day 14"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Test Type</label>
-                <select
-                  value={testType}
-                  onChange={(e: any) => setTestType(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
-                >
-                  <option value="DAILY">Daily Mock (50 Qs: 25 DCME, 13 Math, 6 Phys, 6 Chem - Untimed)</option>
-                  <option value="GRAND">Grand Test (200 Qs: 100 DCME, 50 Math, 25 Phys, 25 Chem - 180 Mins)</option>
-                </select>
-              </div>
-
-              {testType === 'DAILY' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Date (YYYY-MM-DD)</label>
-                  <input
-                    type="date"
-                    required
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
+          {tab === 'tests' && (
+            <div className="space-y-6">
+              {/* Single-Click Automated Test Generation */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-blue-600" />
+                    Automated Question Paper Generator
+                  </h2>
+                  <span className="text-[11px] font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200/60 hidden sm:inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Powered by OpenRouter AI
+                  </span>
                 </div>
-              )}
+                <p className="text-xs sm:text-sm text-slate-500 mb-5">
+                  Click a button to generate complete questions with conceptual explanations across DCME, Math, Physics, and Chemistry, and automatically publish them live for students.
+                </p>
 
-              <div className={testType === 'DAILY' ? 'sm:col-span-1 flex items-end' : 'sm:col-span-2'}>
-                <button
-                  type="submit"
-                  disabled={creatingTest}
-                  className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {creatingTest ? 'Creating Draft...' : 'Create Draft Test'}
-                </button>
-              </div>
-            </form>
-          </div>
+                {/* Optional Topic Instructions */}
+                <div className="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                    Optional Syllabus Focus / Topics
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Focus on Computer Networks, Operating Systems, and Calculus (or leave blank for standard syllabus)"
+                    value={aiInstructions}
+                    onChange={(e) => setAiInstructions(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-lg bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <div className="flex items-center justify-end mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 cursor-pointer font-medium"
+                    >
+                      {showAdvanced ? 'Hide date/title options' : 'Customize date or title'}
+                    </button>
+                  </div>
 
-          {/* AI Generator Helper Box */}
-          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-5">
-            <div className="flex items-center gap-2 text-purple-900 font-bold text-sm mb-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              AI Question Generator Focus (Optional)
-            </div>
-            <p className="text-xs text-purple-800 mb-3">
-              Give OpenRouter specific topic instructions (e.g. "Focus on Computer Networks, DBMS Normalization, and C Pointers").
-            </p>
-            <input
-              type="text"
-              placeholder="e.g. Emphasize Operating Systems scheduling and Data Structures trees"
-              value={aiInstructions}
-              onChange={(e) => setAiInstructions(e.target.value)}
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-purple-200 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 mb-3"
-            />
-          </div>
-
-          {/* Available / Published tests list */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-            <h2 className="text-base font-bold text-slate-900 mb-4">Published & Active Tests</h2>
-            {availableTests.length === 0 ? (
-              <p className="text-xs text-slate-500">No active tests currently published.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {availableTests.map((t) => (
-                  <div key={t.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">
-                          {t.testType}
-                        </span>
-                        {t.scheduledDate && <span className="text-xs text-slate-400">{t.scheduledDate}</span>}
+                  {showAdvanced && (
+                    <div className="grid sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200">
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">Scheduled Date (Daily Mocks)</label>
+                        <input
+                          type="date"
+                          value={customScheduledDate}
+                          onChange={(e) => setCustomScheduledDate(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
                       </div>
-                      <h4 className="font-bold text-slate-900 text-sm mt-1">{t.title}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {t.questionCount} Questions • {t.durationMinutes > 0 ? `${t.durationMinutes} mins` : 'Untimed'}
+                      <div>
+                        <label className="block text-[11px] font-medium text-slate-600 mb-1">Custom Title Override</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Weekend Special Mock"
+                          value={customTitle}
+                          onChange={(e) => setCustomTitle(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* The Two 1-Click Action Cards */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Daily Mock Card */}
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 hover:bg-slate-50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-md">
+                          Daily Mock
+                        </span>
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3" /> Untimed
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 mb-0.5">
+                        50 Questions • 50 Marks
+                      </h3>
+                      <p className="text-xs text-slate-500 mb-3">
+                        25 DCME • 13 Maths • 6 Physics • 6 Chemistry
+                      </p>
+                      {todaysDailyMock && todaysDailyMock.status === 'PUBLISHED' && (
+                        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg mb-3">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Today's mock is live ({todaysDailyMock.title})
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAutoGenerate('DAILY')}
+                      disabled={generatingType !== null}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {generatingType === 'DAILY' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Generating 50 MCQs & Publishing...
+                        </>
+                      ) : todaysDailyMock ? (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          Regenerate Today's Daily Mock
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4" />
+                          Auto-Generate Today's Mock (50 Qs)
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Grand Test Card */}
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 hover:bg-slate-50 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-md">
+                          Full Grand Test
+                        </span>
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3" /> 180 Mins
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 mb-0.5">
+                        200 Questions • 200 Marks
+                      </h3>
+                      <p className="text-xs text-slate-500 mb-3">
+                        100 DCME • 50 Maths • 25 Physics • 25 Chemistry
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleGenerateAI(t.id)}
-                        disabled={generatingForTestId === t.id}
-                        className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                        {generatingForTestId === t.id ? 'Generating...' : 'Fill Questions with AI'}
-                      </button>
-
-                      <button
-                        onClick={() => handlePublish(t.id)}
-                        disabled={publishingTestId === t.id}
-                        className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        {publishingTestId === t.id ? 'Publishing...' : 'Publish'}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAutoGenerate('GRAND')}
+                      disabled={generatingType !== null}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {generatingType === 'GRAND' ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Generating 200 MCQs & Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4" />
+                          Auto-Generate Grand Test #{grandTestsCount + 1}
+                        </>
+                      )}
+                    </button>
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 2: Student Submissions */}
-      {tab === 'analytics' && (
-        <div className="space-y-6">
+              {/* Published & Active Tests List */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    All Test Papers ({availableTests.length})
+                  </h2>
+                  <button
+                    onClick={loadTabContent}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                  </button>
+                </div>
+
+                {availableTests.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-4 text-center">
+                    No tests created yet. Click one of the buttons above to instantly generate your first test!
+                  </p>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {availableTests.map((t) => (
+                      <div
+                        key={t.id}
+                        className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                t.testType === 'GRAND'
+                                  ? 'bg-indigo-100 text-indigo-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}
+                            >
+                              {t.testType}
+                            </span>
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                t.status === 'PUBLISHED'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {t.status}
+                            </span>
+                            {t.scheduledDate && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" /> {t.scheduledDate}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-sm">{t.title}</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {t.questionCount} Questions • {t.durationMinutes > 0 ? `${t.durationMinutes} mins` : 'Untimed'} • Total {t.totalMarks} Marks
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {t.status === 'DRAFT' && (
+                            <>
+                              <button
+                                onClick={() => handleGenerateAI(t.id)}
+                                disabled={generatingForTestId === t.id}
+                                className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                                {generatingForTestId === t.id ? 'Generating...' : 'Fill with AI'}
+                              </button>
+
+                              <button
+                                onClick={() => handlePublish(t.id)}
+                                disabled={publishingTestId === t.id}
+                                className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                {publishingTestId === t.id ? 'Publishing...' : 'Publish'}
+                              </button>
+                            </>
+                          )}
+
+                          {t.status === 'PUBLISHED' && (
+                            <button
+                              onClick={() => {
+                                setSelectedTestId(t.id);
+                                loadTestAttempts(t.id);
+                                setTab('analytics');
+                              }}
+                              className="py-1.5 px-3 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Users className="w-3.5 h-3.5" /> Submissions
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteTest(t.id, t.title)}
+                            disabled={deletingTestId === t.id}
+                            title="Delete test (if no student attempts exist)"
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: Student Submissions */}
+          {tab === 'analytics' && (
+            <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
             <label className="block text-xs font-semibold text-slate-700 mb-2">Select Test to Inspect</label>
             <select

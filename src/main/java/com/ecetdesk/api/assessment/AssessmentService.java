@@ -4,6 +4,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -47,6 +49,128 @@ public class AssessmentService {
         BLUEPRINTS.get(type).forEach((subject, amount) ->
             jdbc.update("INSERT INTO test_subject_allocations(test_id,subject,question_count) VALUES (?,?,?)",id,subject,amount));
         return one("SELECT id,title,test_type AS \"testType\",status,scheduled_date AS \"scheduledDate\",question_count AS \"questionCount\",duration_minutes AS \"durationMinutes\",total_marks AS \"totalMarks\" FROM tests WHERE id=?",id);
+    }
+
+    @Transactional
+    public void deleteTest(UUID testId) {
+        Integer attempts = jdbc.queryForObject("SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, testId);
+        if (attempts != null && attempts > 0) {
+            throw conflict("Cannot delete a test that already has student attempts.");
+        }
+        jdbc.update("DELETE FROM test_questions WHERE test_id=?", testId);
+        jdbc.update("DELETE FROM test_subject_allocations WHERE test_id=?", testId);
+        jdbc.update("DELETE FROM tests WHERE id=?", testId);
+    }
+
+    public Map<String, Object> autoGenerateTest(AssessmentController.AutoGenerateTestRequest r, String adminEmail) {
+        String type = r.testType();
+        if (!BLUEPRINTS.containsKey(type)) {
+            throw bad("Invalid test type. Must be DAILY or GRAND.");
+        }
+
+        UUID adminId = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?)", UUID.class, adminEmail);
+        LocalDate scheduledDate = null;
+        String title;
+        int count = "GRAND".equals(type) ? 200 : 50;
+        int duration = "GRAND".equals(type) ? 180 : 0;
+
+        if ("DAILY".equals(type)) {
+            if (r.scheduledDate() != null && !r.scheduledDate().isBlank()) {
+                try {
+                    scheduledDate = LocalDate.parse(r.scheduledDate().trim());
+                } catch (Exception ex) {
+                    throw bad("scheduledDate must use YYYY-MM-DD.");
+                }
+            } else {
+                scheduledDate = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+            }
+
+            List<Map<String, Object>> existing = jdbc.queryForList(
+                "SELECT id, title, status FROM tests WHERE test_type='DAILY' AND scheduled_date=?", scheduledDate);
+            if (!existing.isEmpty()) {
+                UUID existingId = (UUID) existing.get(0).get("id");
+                Integer attempts = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, existingId);
+                if (attempts != null && attempts > 0) {
+                    throw conflict("A daily mock for " + scheduledDate + " already exists and has active student attempts. Cannot regenerate.");
+                }
+                deleteTest(existingId);
+            }
+
+            title = (r.customTitle() != null && !r.customTitle().isBlank())
+                ? r.customTitle().trim()
+                : "Daily Mock - " + scheduledDate;
+        } else {
+            if (r.customTitle() != null && !r.customTitle().isBlank()) {
+                title = r.customTitle().trim();
+            } else {
+                Integer existingCount = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM tests WHERE test_type='GRAND'", Integer.class);
+                title = "Grand Mock Test #" + ((existingCount == null ? 0 : existingCount) + 1) + " - Full Syllabus";
+            }
+        }
+
+        UUID testId = UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO tests(id, title, test_type, status, scheduled_date, question_count, duration_minutes, total_marks, created_by)
+            VALUES (?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?)
+            """, testId, title, type, scheduledDate, count, duration, count, adminId);
+
+        BLUEPRINTS.get(type).forEach((subject, amount) ->
+            jdbc.update("INSERT INTO test_subject_allocations(test_id, subject, question_count) VALUES (?, ?, ?)", testId, subject, amount));
+
+        Map<String, Integer> blueprint = BLUEPRINTS.get(type);
+        Map<String, List<OpenRouterQuestionGenerator.GeneratedQuestion>> generatedBySubjectList = new ConcurrentHashMap<>();
+        Map<String, Integer> generatedCounts = new ConcurrentHashMap<>();
+
+        List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
+            .map(entry -> CompletableFuture.runAsync(() -> {
+                String subject = entry.getKey();
+                int target = entry.getValue();
+                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
+                    generator.generate(subject, target, r.instructions());
+                generatedBySubjectList.put(subject, generated);
+                generatedCounts.put(subject, generated.size());
+            }))
+            .toList();
+
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        } catch (Exception ex) {
+            try { deleteTest(testId); } catch (Exception ignored) {}
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            if (cause instanceof ResponseStatusException rse) {
+                throw rse;
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed generating test questions: " + cause.getMessage(), cause);
+        }
+
+        int added = persistGeneratedQuestions(testId, generatedBySubjectList);
+        publish(testId);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("id", testId);
+        response.put("title", title);
+        response.put("testType", type);
+        response.put("status", "PUBLISHED");
+        response.put("scheduledDate", scheduledDate == null ? "" : scheduledDate.toString());
+        response.put("questionCount", count);
+        response.put("durationMinutes", duration);
+        response.put("totalMarks", count);
+        response.put("questionsAdded", added);
+        response.put("generatedBySubject", generatedCounts);
+        response.put("message", "Successfully generated and published " + title + " with " + count + " questions!");
+        return response;
+    }
+
+    public List<Map<String,Object>> listAllTestsForAdmin() {
+        return jdbc.queryForList("""
+            SELECT id, title, test_type AS "testType", status, scheduled_date AS "scheduledDate",
+                   question_count AS "questionCount", duration_minutes AS "durationMinutes",
+                   total_marks AS "totalMarks", created_at AS "createdAt", published_at AS "publishedAt"
+            FROM tests
+            ORDER BY created_at DESC
+            """);
     }
 
     @Transactional

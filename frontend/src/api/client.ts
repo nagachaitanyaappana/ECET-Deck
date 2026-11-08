@@ -32,9 +32,11 @@ export async function apiRequest<T>(
   });
 
   if (response.status === 401 && !endpoint.includes('/auth/login')) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+    if (localStorage.getItem('token')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.reload();
+    }
     throw new ApiError(401, 'Session expired. Please log in again.');
   }
 

@@ -28,6 +28,24 @@ public class AssessmentController {
         return service.createTest(request, authentication.getName());
     }
 
+    @PostMapping("/admin/tests/auto-generate")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> autoGenerateTest(@Valid @RequestBody AutoGenerateTestRequest request,
+                                                Authentication authentication) {
+        return service.autoGenerateTest(request, authentication.getName());
+    }
+
+    @DeleteMapping("/admin/tests/{testId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTest(@PathVariable UUID testId) {
+        service.deleteTest(testId);
+    }
+
+    @GetMapping("/admin/tests")
+    public List<Map<String, Object>> listAllTestsForAdmin() {
+        return service.listAllTestsForAdmin();
+    }
+
     @PostMapping("/admin/questions")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> createQuestion(@Valid @RequestBody CreateQuestionRequest request) {
@@ -121,4 +139,8 @@ public class AssessmentController {
                                         @NotNull @Size(min=4,max=4) List<@Valid OptionRequest> options) {}
     public record AnswerRequest(@NotNull UUID optionId) {}
     public record GenerateRequest(@Size(max=1000) String instructions) {}
+    public record AutoGenerateTestRequest(@NotBlank @Pattern(regexp="GRAND|DAILY") String testType,
+                                          @Size(max=1000) String instructions,
+                                          String scheduledDate,
+                                          @Size(max=160) String customTitle) {}
 }

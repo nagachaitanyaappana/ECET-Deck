@@ -1,10 +1,12 @@
 package com.ecetdesk.api.assessment;
 
 import java.util.*;
+import java.time.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,7 +24,13 @@ public class OpenRouterQuestionGenerator {
         this.mapper = mapper;
         this.apiKey = apiKey;
         this.model = model;
-        this.client = RestClient.builder().baseUrl("https://openrouter.ai/api/v1").build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(15));
+        factory.setReadTimeout(Duration.ofSeconds(90));
+        this.client = RestClient.builder()
+            .requestFactory(factory)
+            .baseUrl("https://openrouter.ai/api/v1")
+            .build();
     }
 
     public List<GeneratedQuestion> generate(String subject, int count, String extraInstructions) {

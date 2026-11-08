@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -119,6 +121,45 @@ class AssessmentControllerTest {
     @WithMockUser(username = "student@example.com", roles = "STUDENT")
     void studentCannotAccessAdminLeaderboard() throws Exception {
         mockMvc.perform(get("/api/v1/admin/analytics/leaderboard"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+    void adminCanAutoGenerateTest() throws Exception {
+        UUID testId = UUID.randomUUID();
+        Map<String, Object> response = Map.of(
+            "id", testId,
+            "title", "Daily Mock - 2026-11-08",
+            "testType", "DAILY",
+            "status", "PUBLISHED",
+            "questionCount", 50,
+            "durationMinutes", 0,
+            "totalMarks", 50
+        );
+
+        when(assessmentService.autoGenerateTest(any(), eq("admin@example.com")))
+            .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/admin/tests/auto-generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"testType": "DAILY", "instructions": "Focus on data structures"}
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.title").value("Daily Mock - 2026-11-08"))
+            .andExpect(jsonPath("$.status").value("PUBLISHED"))
+            .andExpect(jsonPath("$.questionCount").value(50));
+    }
+
+    @Test
+    @WithMockUser(username = "student@example.com", roles = "STUDENT")
+    void studentCannotAutoGenerateTest() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/tests/auto-generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"testType": "DAILY"}
+                    """))
             .andExpect(status().isForbidden());
     }
 }
