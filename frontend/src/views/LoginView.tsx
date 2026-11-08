@@ -74,7 +74,7 @@ export const LoginView: React.FC = () => {
           Paradox
         </h2>
         <p className="mt-1 text-center text-sm text-slate-600">
-          Diploma in Computer Engineering (DCME) Practice
+          Prepare. Practice. Progress. · ECET Preparation
         </p>
       </div>
 
