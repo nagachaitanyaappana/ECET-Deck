@@ -1,6 +1,10 @@
-# Paradox — ECET Practice Platform
+# Paradox ECET Deck
 
-A private ECET practice platform for a small group of DCME students.
+**Prepare. Practice. Progress.**
+
+A focused ECET preparation platform for DCME students, bringing practice tests, previous-year questions, and personal progress tracking together in one place.
+
+> **Paradox** is the product identity. The platform is being built for a small private study group, with a clean experience across web and future mobile/desktop apps.
 
 ## Public identity
 
