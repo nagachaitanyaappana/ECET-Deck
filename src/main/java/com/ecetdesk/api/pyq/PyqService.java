@@ -123,6 +123,19 @@ public class PyqService {
         return getAttempt(attempt,email);
     }
 
+    public Map<String,Object> currentAttempt(String email) {
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            SELECT a.id FROM pyq_attempts a JOIN users u ON u.id=a.student_id
+            WHERE lower(u.email)=lower(?) AND a.status='IN_PROGRESS'
+            ORDER BY a.started_at DESC LIMIT 1
+            """,email);
+        if(rows.isEmpty()) return Map.of("active",false);
+        UUID id=(UUID)rows.get(0).get("id");
+        Map<String,Object> current=new LinkedHashMap<>(getAttempt(id,email));
+        current.put("active",true);
+        return current;
+    }
+
     public Map<String,Object> getAttempt(UUID attemptId,String email) {
         Map<String,Object> a=ownedAttempt(attemptId,email);
         List<Map<String,Object>> questions=jdbc.queryForList("""
