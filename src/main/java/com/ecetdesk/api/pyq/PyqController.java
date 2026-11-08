@@ -63,6 +63,11 @@ public class PyqController {
         return service.listPapers(branch,curriculum);
     }
 
+    @GetMapping("/pyq/attempts/current")
+    public Map<String,Object> currentAttempt(Authentication authentication) {
+        return service.currentAttempt(authentication.getName());
+    }
+
     @PostMapping("/pyq/attempts")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String,Object> startAttempt(Authentication authentication) {
