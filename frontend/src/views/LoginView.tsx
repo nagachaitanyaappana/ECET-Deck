@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest, ApiError, getApiBaseUrl, setApiBaseUrl } from '../api/client';
 import type { AuthResponse } from '../types';
-import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server, ArrowRight, Sparkles } from 'lucide-react';
+import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -82,7 +83,7 @@ export const LoginView: React.FC = () => {
           <form onSubmit={handleSubmit} className="auth-form">
             {tab === 'register' && <div className="auth-field"><label htmlFor="displayName">Your name</label><input id="displayName" type="text" required autoComplete="name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Enter your full name" /></div>}
             <div className="auth-field"><label htmlFor="email">Email address</label><input id="email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div>
-            <div className="auth-field"><label htmlFor="password">Password</label><input id="password" type="password" required minLength={tab === 'register' ? 10 : 1} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={tab === 'register' ? 'At least 10 characters' : 'Enter your password'} />{tab === 'register' && <small>Use at least 10 characters.</small>}</div>
+            <div className="auth-field"><label htmlFor="password">Password</label><div className="auth-password-wrap"><input id="password" type={showPassword ? 'text' : 'password'} required minLength={tab === 'register' ? 10 : 1} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} placeholder={tab === 'register' ? 'At least 10 characters' : 'Enter your password'} /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>{tab === 'register' && <small>Use at least 10 characters.</small>}</div>
             <button type="submit" disabled={loading} className="auth-submit">{loading ? <span className="auth-spinner" /> : <>{tab === 'login' ? 'Continue to dashboard' : 'Create account'} <ArrowRight size={17} /></>}</button>
           </form>
 
