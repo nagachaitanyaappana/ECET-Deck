@@ -99,7 +99,6 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
           .then(() => onSubmitted(attemptId))
           .catch((err: any) => {
             alert(err.message || 'Automatic submission failed. Please submit your test.');
-            autoSubmitStarted.current = false;
             setSubmitting(false);
           });
       }
