@@ -38,6 +38,15 @@ public class PyqService {
         return Map.of("id",id,"subject",r.subject(),"sourceYear",r.sourceYear(),"verified",Boolean.TRUE.equals(r.verified()));
     }
 
+    @Transactional
+    public List<Map<String,Object>> createQuestions(List<QuestionRequest> requests) {
+        if (requests == null || requests.isEmpty() || requests.size() > 250)
+            throw bad("Import between 1 and 250 questions per batch.");
+        List<Map<String,Object>> created = new ArrayList<>();
+        for (QuestionRequest request : requests) created.add(createQuestion(request));
+        return created;
+    }
+
     public List<Map<String,Object>> listQuestions(String subject, Integer year, boolean includeUnverified) {
         return jdbc.queryForList("""
             SELECT q.id,q.subject,q.topic,q.curriculum,q.question_text AS "questionText",
