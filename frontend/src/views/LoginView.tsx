@@ -2,31 +2,41 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest, ApiError, getApiBaseUrl, setApiBaseUrl } from '../api/client';
 import type { AuthResponse } from '../types';
-import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server, Mail, Lock, User, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  AlertCircle, BookOpen, CheckCircle2, Eye, EyeOff, Link2, Lock, LogIn,
+  Mail, Save, Server, Settings, ShieldCheck, Sparkles, User, UserPlus, X,
+} from 'lucide-react';
+
+type AuthMode = 'login' | 'register';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
-
-  // Form states
+  const [tab, setTab] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [customServerUrl, setCustomServerUrl] = useState(() => getApiBaseUrl());
 
-  const handleSaveServerUrl = (e: React.FormEvent) => {
-    e.preventDefault();
+  const switchMode = (mode: AuthMode) => {
+    setTab(mode);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleSaveServerUrl = (event: React.FormEvent) => {
+    event.preventDefault();
     setApiBaseUrl(customServerUrl);
-    setSuccess('Server URL saved! You can now sign in.');
+    setSuccess('Server address saved. You can now sign in.');
     setShowServerConfig(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
     setSuccess(null);
     setLoading(true);
@@ -43,234 +53,162 @@ export const LoginView: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({ email, password, displayName }),
         });
-        setSuccess('Account created successfully! Logging you in...');
-        const loginRes = await apiRequest<AuthResponse>('/api/v1/auth/login', {
+        setSuccess('Account created successfully. Signing you in…');
+        const response = await apiRequest<AuthResponse>('/api/v1/auth/login', {
           method: 'POST',
           body: JSON.stringify({ email, password }),
         });
-        login(loginRes);
+        login(response);
       }
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Network error. Is the backend server running on port 8080?');
-      }
+    } catch (err: unknown) {
+      setError(err instanceof ApiError
+        ? err.message
+        : 'Unable to reach the server. Check your connection and API server address.');
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = 'w-full rounded-xl border border-[#e3e6f2] bg-[#f7f8fd] py-3 pl-11 pr-4 text-sm text-[#131b2e] placeholder:text-[#9999ad] outline-none transition hover:bg-white focus:border-[#6358e8] focus:bg-white focus:ring-4 focus:ring-[#6358e8]/10';
+  const labelClass = 'mb-1.5 block text-[13px] font-semibold text-[#27283d]';
+
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Ambient background glow effects */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-gradient-to-b from-blue-600/25 via-indigo-600/15 to-transparent blur-3xl pointer-events-none -z-0" />
-      <div className="absolute bottom-0 right-0 w-[500px] h-[350px] bg-gradient-to-t from-violet-600/20 to-transparent blur-3xl pointer-events-none -z-0" />
-
-      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold mb-4 backdrop-blur-sm">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-          <span>AP & TS ECET 2025/2026 Diploma Portal</span>
-        </div>
-
-        <div className="flex justify-center mb-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 ring-4 ring-white/10">
-            <BookOpen className="w-7 h-7 drop-shadow-sm" />
+    <div className="min-h-screen bg-[#faf8ff] text-[#131b2e]" style={{ fontFamily: '"Source Sans 3", sans-serif' }}>
+      <header className="fixed inset-x-0 top-0 z-30 border-b border-[#e9e8f2] bg-[#faf8ff]/90 shadow-[0_1px_8px_rgba(20,20,50,0.04)] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#4f46e5] text-white">
+              <BookOpen size={18} />
+            </span>
+            <span className="text-[15px] font-bold tracking-tight text-[#17182d]" style={{ fontFamily: '"Hanken Grotesk", sans-serif' }}>
+              Paradox ECET
+            </span>
           </div>
+          <span className="hidden items-center gap-2 rounded-full bg-[#eeedff] px-3 py-1.5 text-[11px] font-semibold text-[#5148c8] sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#26a879]" />
+            Student assessment portal
+          </span>
         </div>
+      </header>
 
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-heading">
-          Paradox ECET Deck
-        </h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Master DCME, Mathematics, Physics & Chemistry with timed mock exams.
-        </p>
-      </div>
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 pb-8 pt-24 sm:px-6">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-36 left-1/2 h-[430px] w-[700px] -translate-x-1/2 rounded-full bg-gradient-to-b from-[#4f46e5]/20 via-[#756df1]/10 to-transparent blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-0 h-[350px] w-[500px] rounded-full bg-gradient-to-t from-[#7770e8]/15 to-transparent blur-3xl" />
 
-      <div className="relative z-10 mt-7 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white/95 backdrop-blur-xl py-7 px-6 sm:px-8 shadow-2xl shadow-black/40 rounded-3xl border border-white/20">
-          {/* Tab selector */}
-          <div className="flex rounded-xl bg-slate-100 p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => { setTab('login'); setError(null); }}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                tab === 'login'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LogIn className="w-4 h-4" />
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setTab('register'); setError(null); }}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                tab === 'register'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <UserPlus className="w-4 h-4" />
-              Create Account
-            </button>
+        <section className="relative z-10 mx-auto flex w-full max-w-[440px] flex-col items-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#e4e1ff] bg-[#eeedff]/75 px-3 py-1.5 text-[10px] font-bold tracking-wide text-[#5148c8] shadow-sm backdrop-blur">
+            <Sparkles size={14} />
+            AP &amp; TS ECET · DIPLOMA PREPARATION
           </div>
 
-          {error && (
-            <div className="mb-4 p-3.5 bg-red-50 border border-red-200/80 rounded-xl flex items-start gap-2.5 text-xs text-red-700 font-medium">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+          <div className="mb-3.5 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-tr from-[#4f46e5] via-[#4338ca] to-[#3130c0] text-white shadow-xl shadow-indigo-500/25">
+            <BookOpen size={27} />
+          </div>
 
-          {success && (
-            <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-start gap-2.5 text-xs text-emerald-700 font-medium">
-              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <span>{success}</span>
-            </div>
-          )}
+          <h1 className="text-center text-[32px] font-bold leading-tight tracking-[-0.04em] text-[#17182d] sm:text-[38px]" style={{ fontFamily: '"Hanken Grotesk", sans-serif' }}>
+            Paradox ECET Deck
+          </h1>
+          <p className="mb-6 mt-1.5 max-w-xs text-center text-sm leading-6 text-[#68697e]">
+            Master DCME, Mathematics, Physics &amp; Chemistry with focused practice and mock exams.
+          </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {tab === 'register' && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g. Naga Chaitanya"
-                    className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-600 transition-all"
-                  />
-                </div>
+          <div className="w-full rounded-[26px] border border-white/80 bg-white/95 px-5 py-6 shadow-[0_22px_65px_rgba(42,39,100,0.12)] backdrop-blur-xl sm:px-8 sm:py-7">
+            <div className="mb-6 flex rounded-xl bg-[#f1f1fa] p-1">
+              <button type="button" onClick={() => switchMode('login')} aria-pressed={tab === 'login'}
+                className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-bold transition ${tab === 'login' ? 'bg-white text-[#4338ca] shadow-sm' : 'text-[#696a80] hover:text-[#25263c]'}`}>
+                <LogIn size={16} /> Sign In
+              </button>
+              <button type="button" onClick={() => switchMode('register')} aria-pressed={tab === 'register'}
+                className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-bold transition ${tab === 'register' ? 'bg-white text-[#4338ca] shadow-sm' : 'text-[#696a80] hover:text-[#25263c]'}`}>
+                <UserPlus size={16} /> Create Account
+              </button>
+            </div>
+
+            {error && (
+              <div role="alert" className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" /><span>{error}</span>
+              </div>
+            )}
+            {success && (
+              <div role="status" className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
+                <CheckCircle2 size={16} className="mt-0.5 shrink-0" /><span>{success}</span>
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="student@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-600 transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  minLength={tab === 'register' ? 10 : 1}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={tab === 'register' ? 'Min 10 characters' : 'Enter password'}
-                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-600 transition-all"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
               {tab === 'register' && (
-                <p className="mt-1 text-[11px] text-slate-500 font-medium">Must be at least 10 characters.</p>
+                <div>
+                  <label className={labelClass} htmlFor="display-name">Full Name</label>
+                  <div className="relative">
+                    <User size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#85869c]" />
+                    <input id="display-name" className={inputClass} type="text" required autoComplete="name" value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="Enter your full name" />
+                  </div>
+                </div>
               )}
+
+              <div>
+                <label className={labelClass} htmlFor="email">Email Address</label>
+                <div className="relative">
+                  <Mail size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#85869c]" />
+                  <input id="email" className={inputClass} type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="student@example.com" />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-[13px] font-semibold text-[#27283d]" htmlFor="password">Password</label>
+                </div>
+                <div className="relative">
+                  <Lock size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#85869c]" />
+                  <input id="password" className={`${inputClass} pr-12`} type={showPassword ? 'text' : 'password'} required minLength={tab === 'register' ? 10 : 1} autoComplete={tab === 'login' ? 'current-password' : 'new-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder={tab === 'register' ? 'At least 10 characters' : 'Enter your password'} />
+                  <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-[#85869c] hover:text-[#4338ca]">
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {tab === 'register' && <p className="mt-1.5 text-[11px] text-[#85869c]">Use at least 10 characters.</p>}
+              </div>
+
+              <button type="submit" disabled={loading}
+                className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4f46e5] via-[#4338ca] to-[#3130c0] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60">
+                {loading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" /> : <><ShieldCheck size={17} /> {tab === 'login' ? 'Sign In to ECET Deck' : 'Register Student Account'}</>}
+              </button>
+            </form>
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f6f6fc] px-3 py-3 text-[10px] font-semibold text-[#62637a]">
+              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-[#07865c]" /> 200-Q Timed Mocks</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-[#07865c]" /> Untimed Daily Tests</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-[#07865c]" /> C23 Syllabus</span>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full min-h-12 mt-2 py-3 px-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 active:scale-[0.99] transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 hover-lift"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : tab === 'login' ? (
-                'Sign In to ECET Deck'
-              ) : (
-                'Create Account & Start'
-              )}
-            </button>
-          </form>
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#eeeef5] pt-4 text-[10px] text-[#85869c]">
+              <span>Private study space for DCME students.</span>
+              <button type="button" onClick={() => setShowServerConfig(value => !value)} className="flex items-center gap-1 rounded-lg px-2 py-1 font-semibold text-[#6664a0] transition hover:bg-[#eeedff] hover:text-[#4338ca]">
+                <Settings size={14} /> Server
+              </button>
+            </div>
 
-          {/* Quick highlights */}
-          <div className="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1 font-medium text-slate-600">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> 200-Q Timed Mocks
-            </span>
-            <span className="flex items-center gap-1 font-medium text-slate-600">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Untimed Daily Tests
-            </span>
-            <span className="flex items-center gap-1 font-medium text-slate-600">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> C23 Syllabus
-            </span>
+            {showServerConfig && (
+              <form onSubmit={handleSaveServerUrl} className="mt-4 rounded-2xl border border-[#e5e4f2] bg-[#f3f3fc] p-4">
+                <div className="mb-1 flex items-center gap-2 text-xs font-bold text-[#292a43]"><Server size={15} className="text-[#5148c8]" /> Backend API Server URL</div>
+                <p className="mb-3 text-[11px] leading-5 text-[#73748a]">For a mobile or desktop build, enter the hosted API address or your computer's local network address.</p>
+                <div className="relative">
+                  <Link2 size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#85869c]" />
+                  <input aria-label="Backend API Server URL" className="w-full rounded-lg border border-[#e1e1ed] bg-white py-2.5 pl-9 pr-3 text-xs text-[#292a43] outline-none focus:border-[#6358e8] focus:ring-4 focus:ring-[#6358e8]/10" type="url" value={customServerUrl} onChange={event => setCustomServerUrl(event.target.value)} placeholder="https://your-api.example.com" />
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowServerConfig(false)} className="flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-[#68697e] hover:bg-white"><X size={13} /> Cancel</button>
+                  <button type="submit" className="flex items-center gap-1.5 rounded-lg bg-[#4338ca] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#3730a3]"><Save size={13} /> Save URL</button>
+                </div>
+              </form>
+            )}
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-400 pt-3">
-            <span>Private group for DCME students.</span>
-            <button
-              type="button"
-              onClick={() => setShowServerConfig(!showServerConfig)}
-              className="text-slate-400 hover:text-indigo-600 transition-colors p-1 cursor-pointer flex items-center gap-1 font-medium"
-              title="Configure Backend Server URL"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Server</span>
-            </button>
+          <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-semibold text-[#77788d]">
+            <span className="h-2 w-2 rounded-full bg-[#16a36d]" />
+            Secure access to your ECET preparation workspace
           </div>
-
-          {showServerConfig && (
-            <form onSubmit={handleSaveServerUrl} className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                <Server className="w-3.5 h-3.5 text-indigo-600" />
-                Backend API Server URL
-              </div>
-              <p className="text-[11px] text-slate-500">
-                On mobile or desktop app, enter host URL (e.g. <code>http://192.168.1.10:8080</code> or cloud URL).
-              </p>
-              <input
-                type="text"
-                placeholder="Leave blank for same-origin"
-                value={customServerUrl}
-                onChange={(e) => setCustomServerUrl(e.target.value)}
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowServerConfig(false)}
-                  className="px-2.5 py-1 text-slate-600 hover:bg-slate-200 rounded text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold cursor-pointer"
-                >
-                  Save URL
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 };
