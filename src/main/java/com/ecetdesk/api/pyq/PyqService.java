@@ -322,7 +322,7 @@ public class PyqService {
     }
     private void ensureWithinTime(Map<String,Object> a) {
         long seconds=getElapsedSeconds((UUID) a.get("id"));
-        if(seconds>((long)((Number)a.get("duration_minutes")).intValue())*60)
+        if(seconds>=((long)((Number)a.get("duration_minutes")).intValue())*60)
             throw conflict("The 180-minute PYQ Challenge time limit has expired.");
     }
     private long getElapsedSeconds(UUID attemptId) {
