@@ -45,7 +45,7 @@ public class PyqService {
                    q.source_question_number AS "sourceQuestionNumber",q.difficulty,q.verified,q.active,
                    (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id) AS "optionCount"
             FROM pyq_questions q
-            WHERE (? IS NULL OR q.subject=?) AND (? IS NULL OR q.source_year=?)
+            WHERE (CAST(? AS VARCHAR) IS NULL OR q.subject=?) AND (CAST(? AS INTEGER) IS NULL OR q.source_year=?)
               AND (? = TRUE OR q.verified=TRUE)
             ORDER BY q.source_year DESC,q.subject,q.created_at DESC
             """, subject,subject,year,year,includeUnverified);
@@ -67,7 +67,7 @@ public class PyqService {
             SELECT id,title,exam_year AS "examYear",branch,curriculum,paper_type AS "paperType",
                    storage_path AS "storagePath",public_url AS "publicUrl",source_name AS "sourceName",
                    attribution,created_at AS "createdAt"
-            FROM pyq_papers WHERE active=TRUE AND (? IS NULL OR branch=?) AND (? IS NULL OR curriculum=?)
+            FROM pyq_papers WHERE active=TRUE AND (CAST(? AS VARCHAR) IS NULL OR branch=?) AND (CAST(? AS VARCHAR) IS NULL OR curriculum=?)
             ORDER BY exam_year DESC,paper_type,branch
             """,branch,branch,curriculum,curriculum);
     }
