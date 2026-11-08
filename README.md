@@ -215,6 +215,9 @@ POST /api/v1/admin/questions
 }
 ```
 
+Review a draft test and its generated answers (ADMIN only):
+`GET /api/v1/admin/tests/{testId}`
+
 Attach a question to a draft test:
 `POST /api/v1/admin/tests/{testId}/questions/{questionId}`
 
