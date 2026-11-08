@@ -4,7 +4,7 @@ import java.util.*;
 import java.time.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
+import com.ecetdesk.api.settings.AdminRuntimeSettingsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -15,15 +15,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class OpenRouterQuestionGenerator {
     private final RestClient client;
     private final ObjectMapper mapper;
-    private final String apiKey;
-    private final String model;
+    private final AdminRuntimeSettingsService runtimeSettings;
 
-    public OpenRouterQuestionGenerator(ObjectMapper mapper,
-            @Value("${app.ai.openrouter.api-key:}") String apiKey,
-            @Value("${app.ai.openrouter.model:openai/gpt-4o-mini}") String model) {
+    public OpenRouterQuestionGenerator(ObjectMapper mapper, AdminRuntimeSettingsService runtimeSettings) {
         this.mapper = mapper;
-        this.apiKey = apiKey;
-        this.model = model;
+        this.runtimeSettings = runtimeSettings;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(15));
         factory.setReadTimeout(Duration.ofSeconds(90));
@@ -34,9 +30,9 @@ public class OpenRouterQuestionGenerator {
     }
 
     public List<GeneratedQuestion> generate(String subject, int count, String extraInstructions) {
-        if (apiKey == null || apiKey.isBlank() || count <= 0) {
-            return Collections.emptyList();
-        }
+        if (count <= 0) return Collections.emptyList();
+        AdminRuntimeSettingsService.RuntimeConfig config = runtimeSettings.getRuntimeConfig();
+        if (config.apiKey() == null || config.apiKey().isBlank()) return Collections.emptyList();
         List<GeneratedQuestion> result = new ArrayList<>();
         int attempts = 0;
         int maxAttempts = Math.max(5, (count / 3) + 2);
@@ -44,7 +40,7 @@ public class OpenRouterQuestionGenerator {
             attempts++;
             int needed = count - result.size();
             int batch = Math.min(5, needed);
-            List<GeneratedQuestion> batchQuestions = generateBatch(subject, batch, extraInstructions);
+            List<GeneratedQuestion> batchQuestions = generateBatch(subject, batch, extraInstructions, config);
             if (batchQuestions.isEmpty()) {
                 break;
             }
@@ -73,7 +69,7 @@ public class OpenRouterQuestionGenerator {
         return trimmed;
     }
 
-    private List<GeneratedQuestion> generateBatch(String subject, int count, String extra) {
+    private List<GeneratedQuestion> generateBatch(String subject, int count, String extra, AdminRuntimeSettingsService.RuntimeConfig config) {
         String prompt = """
             Create exactly %d original, technically accurate ECET diploma entrance MCQs for subject %s.
             Target Andhra Pradesh ECET DCME diploma-level candidates. Questions must be clear and unambiguous.
@@ -86,7 +82,7 @@ public class OpenRouterQuestionGenerator {
             Additional focus/instructions: %s
             """.formatted(count, subject, extra == null || extra.isBlank() ? "Follow the standard subject syllabus." : extra);
         Map<String,Object> body = Map.of(
-            "model", model,
+            "model", config.model(),
             "temperature", 0.25,
             "response_format", Map.of("type","json_object"),
             "messages", List.of(
@@ -96,7 +92,7 @@ public class OpenRouterQuestionGenerator {
         );
         try {
             String raw = client.post().uri("/chat/completions")
-                .header("Authorization","Bearer "+apiKey)
+                .header("Authorization","Bearer "+config.apiKey())
                 .header("HTTP-Referer","https://github.com/nagachaitanyaappana/ECET-Deck")
                 .header("X-Title","ECET Desk")
                 .body(body).retrieve().body(String.class);
