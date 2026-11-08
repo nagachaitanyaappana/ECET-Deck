@@ -46,6 +46,13 @@ public class AuthController {
         return Map.of("message","A verification code has been sent to your email.","email",account.getEmail(),"challenge","EMAIL_VERIFY");
     }
 
+    @PostMapping("/resend-verification")
+    public Map<String,String> resendVerification(@Valid @RequestBody EmailRequest request) {
+        users.findByEmailIgnoreCase(request.email().trim()).filter(account -> !account.isEmailVerified())
+            .ifPresent(account -> emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"EMAIL_VERIFY"));
+        return Map.of("message","If the account needs verification, a new code has been sent.");
+    }
+
     @PostMapping("/verify-email")
     public Map<String,String> verifyEmail(@Valid @RequestBody VerifyCodeRequest request) {
         UserAccount account=users.findByEmailIgnoreCase(request.email().trim()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid or expired verification request."));
