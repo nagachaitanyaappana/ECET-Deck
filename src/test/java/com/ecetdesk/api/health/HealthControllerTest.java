@@ -7,12 +7,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import com.ecetdesk.api.auth.JwtAuthenticationFilter;
 import com.ecetdesk.api.auth.CustomUserDetailsService;
+import com.ecetdesk.api.auth.SecurityConfig;
 
 @WebMvcTest(HealthController.class)
+@Import(SecurityConfig.class)
 class HealthControllerTest {
 
     @Autowired
