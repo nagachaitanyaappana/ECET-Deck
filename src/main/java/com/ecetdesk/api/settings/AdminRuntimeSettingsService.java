@@ -26,7 +26,7 @@ public class AdminRuntimeSettingsService {
             @Value("${app.security.jwt.secret-base64:}") String jwtSecret) {
         this.jdbc = jdbc;
         this.envApiKey = envApiKey;
-        this.envModel = envModel;
+        this.envModel = envModel == null || envModel.isBlank() ? "openai/gpt-4o-mini" : envModel;
         try {
             byte[] material = jwtSecret.isBlank() ? "local-development-only-change-jwt-secret".getBytes(StandardCharsets.UTF_8) : Base64.getDecoder().decode(jwtSecret);
             this.encryptionKey = new SecretKeySpec(MessageDigest.getInstance("SHA-256").digest(material), "AES");
