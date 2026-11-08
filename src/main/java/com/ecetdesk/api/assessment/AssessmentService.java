@@ -2,6 +2,7 @@ package com.ecetdesk.api.assessment;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -111,7 +112,7 @@ public class AssessmentService {
     public Map<String,Object> startAttempt(UUID testId, String email) {
         Map<String,Object> test = test(testId);
         if (!"PUBLISHED".equals(test.get("status"))) throw conflict("This test is not available.");
-        if ("DAILY".equals(test.get("test_type")) && !LocalDate.now().equals(((java.sql.Date)test.get("scheduled_date")).toLocalDate()))
+        if ("DAILY".equals(test.get("test_type")) && !LocalDate.now(ZoneId.of("Asia/Kolkata")).equals(((java.sql.Date)test.get("scheduled_date")).toLocalDate()))
             throw conflict("This daily mock is not available today.");
         UUID student = studentId(email);
         List<Map<String,Object>> existing = jdbc.queryForList("SELECT id,status FROM test_attempts WHERE test_id=? AND student_id=?",testId,student);
@@ -149,8 +150,8 @@ public class AssessmentService {
             """,Integer.class,attempt.get("test_id"),questionId,optionId);
         if (valid == null || valid != 1) throw bad("The selected option does not belong to this test question.");
         jdbc.update("""
-            INSERT INTO student_answers(attempt_id,question_id,selected_option_id)
-            VALUES (?,?,?) ON CONFLICT (attempt_id,question_id)
+            INSERT INTO student_answers(attempt_id,question_id,selected_option_id,answered_at)
+            VALUES (?,?,?,CURRENT_TIMESTAMP) ON CONFLICT (attempt_id,question_id)
             DO UPDATE SET selected_option_id=EXCLUDED.selected_option_id,answered_at=CURRENT_TIMESTAMP
             """,attemptId,questionId,optionId);
         return Map.of("saved",true,"questionId",questionId);
