@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../api/client';
 import type { AvailableTest, StudentResultSummary, GrandTestRequest, FeedbackItem } from '../../types';
 import { PyqStudentPanel } from './PyqStudentPanel';
+import { StudentAnalyticsPanel } from './StudentAnalyticsPanel';
 import {
   Clock,
   CheckCircle2,
@@ -27,7 +28,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onStartTest,
   onReviewAttempt,
 }) => {
-  const [tab, setTab] = useState<'available' | 'pyq' | 'results' | 'request' | 'feedback'>('available');
+  const [tab, setTab] = useState<'available' | 'pyq' | 'results' | 'analytics' | 'request' | 'feedback'>('available');
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [results, setResults] = useState<StudentResultSummary[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -60,7 +61,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       if (tab === 'available') {
         const data = await apiRequest<AvailableTest[]>('/api/v1/tests');
         setTests(data);
-      } else if (tab === 'results') {
+      } else if (tab === 'analytics') {\n        // The analytics panel loads its own student-scoped summary.\n      } else if (tab === 'results') {
         const data = await apiRequest<StudentResultSummary[]>('/api/v1/my/results');
         setResults(data);
       } else if (tab === 'request') {
@@ -178,6 +179,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         >
           <BookOpen className="w-4 h-4" />
           PYQ Challenge
+        </button>
+
+        <button
+          onClick={() => setTab('analytics')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+            tab === 'analytics' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          My Progress
         </button>
 
         <button
@@ -307,7 +318,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         )
       ) : tab === 'pyq' ? (
         <PyqStudentPanel />
-      ) : tab === 'results' ? (
+      ) : tab === 'analytics' ? (\n        <StudentAnalyticsPanel />\n      ) : tab === 'results' ? (
         /* Results Tab */
         results.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
