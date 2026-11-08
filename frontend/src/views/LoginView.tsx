@@ -36,12 +36,14 @@ export const LoginView: React.FC = () => {
         const response = await apiRequest<{ message: string }>('/api/v1/auth/register', {
           method: 'POST', body: JSON.stringify({ email, password, displayName }),
         });
-        setStep('verify-email'); setSuccess(response.message);
+        setStep('verify-email');
+        setSuccess(response.message);
       } else if (step === 'credentials' && tab === 'login') {
         const response = await apiRequest<{ message: string }>('/api/v1/auth/login', {
           method: 'POST', body: JSON.stringify({ email, password }),
         });
-        setStep('verify-login'); setSuccess(response.message);
+        setStep('verify-login');
+        setSuccess(response.message);
       } else if (step === 'verify-email') {
         const response = await apiRequest<{ message: string }>('/api/v1/auth/verify-email', {
           method: 'POST', body: JSON.stringify({ email, code }),
@@ -56,7 +58,8 @@ export const LoginView: React.FC = () => {
         const response = await apiRequest<{ message: string }>('/api/v1/auth/forgot-password', {
           method: 'POST', body: JSON.stringify({ email }),
         });
-        setStep('reset'); setSuccess(response.message);
+        setStep('reset');
+        setSuccess(response.message);
       } else if (step === 'reset') {
         const response = await apiRequest<{ message: string }>('/api/v1/auth/reset-password', {
           method: 'POST', body: JSON.stringify({ email, code, newPassword }),

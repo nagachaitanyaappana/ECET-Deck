@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmailAuthService {
+    private static final Logger log = LoggerFactory.getLogger(EmailAuthService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    public record IssueResult(String code, boolean emailDelivered, String deliveryError) {}
     private final JdbcTemplate jdbc;
     private final UserRepository users;
     private final PasswordEncoder encoder;
@@ -37,7 +42,7 @@ public class EmailAuthService {
     }
 
     @Transactional
-    public void issue(UUID userId, String recipient, String displayName, String purpose) {
+    public IssueResult issue(UUID userId, String recipient, String displayName, String purpose) {
         Integer recentlySent = jdbc.queryForObject("""
             SELECT COUNT(*) FROM app.auth_challenges
             WHERE user_id=? AND purpose=? AND created_at > CURRENT_TIMESTAMP - (? * INTERVAL '1 second')
@@ -51,7 +56,17 @@ public class EmailAuthService {
             INSERT INTO app.auth_challenges(id,user_id,purpose,code_hash,expires_at,last_sent_at)
             VALUES (?,?,?,?,CURRENT_TIMESTAMP + (? * INTERVAL '1 minute'),CURRENT_TIMESTAMP)
             """, UUID.randomUUID(), userId, purpose, encoder.encode(code), expiryMinutes);
-        send(recipient, displayName, purpose, code);
+        
+        boolean delivered = false;
+        String deliveryError = null;
+        try {
+            send(recipient, displayName, purpose, code);
+            delivered = true;
+        } catch (Exception ex) {
+            deliveryError = ex.getMessage();
+            log.warn("Failed to deliver {} email to {}. Cause: {}", purpose, recipient, ex.getMessage());
+        }
+        return new IssueResult(code, delivered, deliveryError);
     }
 
     @Transactional
@@ -88,8 +103,14 @@ public class EmailAuthService {
     }
 
     public void notifyLogin(UserAccount account) {
-        if(loginNotifications) email.send(account.getEmail(), "New sign-in to Paradox ECET Deck",
-            "Hello " + account.getDisplayName() + ",\n\nA sign-in to your Paradox ECET Deck account was completed. If this wasn't you, reset your password immediately.", null);
+        if(loginNotifications) {
+            try {
+                email.send(account.getEmail(), "New sign-in to Paradox ECET Deck",
+                    "Hello " + account.getDisplayName() + ",\n\nA sign-in to your Paradox ECET Deck account was completed. If this wasn't you, reset your password immediately.", null);
+            } catch (Exception ex) {
+                log.warn("Failed to deliver login notification to {}: {}", account.getEmail(), ex.getMessage());
+            }
+        }
     }
 
     private void send(String recipient,String name,String purpose,String code) {

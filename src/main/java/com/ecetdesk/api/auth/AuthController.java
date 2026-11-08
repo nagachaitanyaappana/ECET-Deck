@@ -42,15 +42,21 @@ public class AuthController {
         String email=request.email().trim().toLowerCase();
         if(users.existsByEmailIgnoreCase(email)) throw new ResponseStatusException(HttpStatus.CONFLICT,"An account with this email already exists");
         UserAccount account=users.save(new UserAccount(email,passwordEncoder.encode(request.password()),request.displayName(),UserRole.STUDENT,false));
-        emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"EMAIL_VERIFY");
-        return Map.of("message","A verification code has been sent to your email.","email",account.getEmail(),"challenge","EMAIL_VERIFY");
+        EmailAuthService.IssueResult issueResult = emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"EMAIL_VERIFY");
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("email", account.getEmail());
+        response.put("challenge", "EMAIL_VERIFY");
+        response.put("message", "A verification code has been sent to your email.");
+        return response;
     }
 
     @PostMapping("/resend-verification")
     public Map<String,String> resendVerification(@Valid @RequestBody EmailRequest request) {
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "If the account needs verification, a new code has been sent.");
         users.findByEmailIgnoreCase(request.email().trim()).filter(account -> !account.isEmailVerified())
             .ifPresent(account -> emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"EMAIL_VERIFY"));
-        return Map.of("message","If the account needs verification, a new code has been sent.");
+        return response;
     }
 
     @PostMapping("/verify-email")
@@ -72,7 +78,11 @@ public class AuthController {
         }
         UserAccount account=users.findByEmailIgnoreCase(authentication.getName()).orElseThrow();
         emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"LOGIN_OTP");
-        return Map.of("message","A sign-in code has been sent to your email.","email",account.getEmail(),"challenge","LOGIN_OTP");
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("email", account.getEmail());
+        response.put("challenge", "LOGIN_OTP");
+        response.put("message", "A sign-in code has been sent to your email.");
+        return response;
     }
 
     @PostMapping("/verify-login")
@@ -88,11 +98,14 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public Map<String,String> forgotPassword(@Valid @RequestBody EmailRequest request) {
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "If an eligible account exists, password recovery instructions have been sent.");
         users.findByEmailIgnoreCase(request.email().trim()).filter(UserAccount::isEmailVerified).ifPresent(account -> {
-            try { emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"PASSWORD_RESET"); }
-            catch(AuthFlowException ex) { /* Keep the response indistinguishable for known and unknown addresses. */ }
+            try {
+                emailAuth.issue(account.getId(),account.getEmail(),account.getDisplayName(),"PASSWORD_RESET");
+            } catch(AuthFlowException ex) { /* Keep the response indistinguishable for known and unknown addresses. */ }
         });
-        return Map.of("message","If an eligible account exists, password recovery instructions have been sent.");
+        return response;
     }
 
     @PostMapping("/reset-password")
