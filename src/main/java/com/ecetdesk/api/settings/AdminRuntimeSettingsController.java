@@ -24,11 +24,14 @@ public class AdminRuntimeSettingsController {
     @PutMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void update(@Valid @RequestBody UpdateSettingsRequest request, Authentication authentication) {
-        settings.update(request.apiKey(), request.clearApiKey(), request.model(), authentication.getName());
+        settings.update(request.apiKey(), request.clearApiKey(), request.model(),
+                request.brevoApiKey(), request.clearBrevoApiKey(), authentication.getName());
     }
 
     public record UpdateSettingsRequest(
             @Size(max = 500) String apiKey,
             boolean clearApiKey,
-            @Size(max = 120) String model) {}
+            @Size(max = 120) String model,
+            @Size(max = 500) String brevoApiKey,
+            boolean clearBrevoApiKey) {}
 }

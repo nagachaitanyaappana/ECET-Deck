@@ -1,5 +1,6 @@
 package com.ecetdesk.api.auth;
 
+import com.ecetdesk.api.notification.BrevoEmailService;
 import com.ecetdesk.api.user.UserAccount;
 import com.ecetdesk.api.user.UserRepository;
 import java.security.SecureRandom;
@@ -9,8 +10,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,26 +20,24 @@ public class EmailAuthService {
     private final JdbcTemplate jdbc;
     private final UserRepository users;
     private final PasswordEncoder encoder;
-    private final JavaMailSender mail;
-    private final String from;
+    private final BrevoEmailService email;
     private final int expiryMinutes;
     private final int resendSeconds;
     private final boolean loginNotifications;
 
     public EmailAuthService(JdbcTemplate jdbc, UserRepository users, PasswordEncoder encoder,
-            JavaMailSender mail, @Value("${app.mail.from:}") String from,
+            BrevoEmailService email,
             @Value("${app.auth.otp-expiry-minutes:10}") int expiryMinutes,
             @Value("${app.auth.otp-resend-seconds:60}") int resendSeconds,
             @Value("${app.auth.login-notifications-enabled:true}") boolean loginNotifications) {
-        this.jdbc=jdbc; this.users=users; this.encoder=encoder; this.mail=mail;
-        this.from=from == null ? "" : from.trim();
+        this.jdbc=jdbc; this.users=users; this.encoder=encoder; this.email=email;
         this.expiryMinutes=Math.max(3, Math.min(expiryMinutes, 30));
         this.resendSeconds=Math.max(30, Math.min(resendSeconds, 600));
         this.loginNotifications=loginNotifications;
     }
 
     @Transactional
-    public void issue(UUID userId, String email, String displayName, String purpose) {
+    public void issue(UUID userId, String recipient, String displayName, String purpose) {
         Integer recentlySent = jdbc.queryForObject("""
             SELECT COUNT(*) FROM app.auth_challenges
             WHERE user_id=? AND purpose=? AND created_at > CURRENT_TIMESTAMP - (? * INTERVAL '1 second')
@@ -54,7 +51,7 @@ public class EmailAuthService {
             INSERT INTO app.auth_challenges(id,user_id,purpose,code_hash,expires_at,last_sent_at)
             VALUES (?,?,?,?,CURRENT_TIMESTAMP + (? * INTERVAL '1 minute'),CURRENT_TIMESTAMP)
             """, UUID.randomUUID(), userId, purpose, encoder.encode(code), expiryMinutes);
-        send(email, displayName, purpose, code);
+        send(recipient, displayName, purpose, code);
     }
 
     @Transactional
@@ -91,11 +88,11 @@ public class EmailAuthService {
     }
 
     public void notifyLogin(UserAccount account) {
-        if(loginNotifications) sendPlain(account.getEmail(), "New sign-in to Paradox ECET Deck",
-            "Hello " + account.getDisplayName() + ",\n\nA sign-in to your Paradox ECET Deck account was completed. If this wasn't you, reset your password immediately.");
+        if(loginNotifications) email.send(account.getEmail(), "New sign-in to Paradox ECET Deck",
+            "Hello " + account.getDisplayName() + ",\n\nA sign-in to your Paradox ECET Deck account was completed. If this wasn't you, reset your password immediately.", null);
     }
 
-    private void send(String email,String name,String purpose,String code) {
+    private void send(String recipient,String name,String purpose,String code) {
         String subject; String action;
         switch(purpose) {
             case "EMAIL_VERIFY" -> { subject="Verify your Paradox ECET Deck email"; action="verify your email address"; }
@@ -103,14 +100,7 @@ public class EmailAuthService {
             case "PASSWORD_RESET" -> { subject="Reset your Paradox ECET Deck password"; action="reset your password"; }
             default -> throw new IllegalArgumentException("Unknown authentication challenge purpose");
         }
-        sendPlain(email,subject,"Hello " + name + ",\n\nYour code to " + action + " is: " + code
-            + "\n\nThis code expires in " + expiryMinutes + " minutes and can be used only once. If you did not request this, you can ignore this email.");
-    }
-
-    private void sendPlain(String email,String subject,String body) {
-        if(from.isBlank()) throw new IllegalStateException("Email delivery is not configured. Set MAIL_FROM and SMTP credentials.");
-        SimpleMailMessage message=new SimpleMailMessage();
-        message.setFrom(from); message.setTo(email); message.setSubject(subject); message.setText(body);
-        mail.send(message);
+        email.send(recipient, subject, "Hello " + name + ",\n\nYour code to " + action + " is: " + code
+            + "\n\nThis code expires in " + expiryMinutes + " minutes and can be used only once. If you did not request this, you can ignore this email.", null);
     }
 }

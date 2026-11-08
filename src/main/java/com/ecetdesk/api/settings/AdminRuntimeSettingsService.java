@@ -19,15 +19,18 @@ public class AdminRuntimeSettingsService {
     private static final String DEFAULT_MODEL = "openai/gpt-4o-mini";
     private final JdbcTemplate jdbc;
     private final String environmentApiKey;
+    private final String environmentBrevoApiKey;
     private final String environmentModel;
     private final SecretKeySpec encryptionKey;
 
     public AdminRuntimeSettingsService(JdbcTemplate jdbc,
             @Value("${app.ai.openrouter.api-key:}") String environmentApiKey,
             @Value("${app.ai.openrouter.model:}") String environmentModel,
+            @Value("${app.mail.brevo.api-key:}") String environmentBrevoApiKey,
             @Value("${app.security.settings-encryption-key-base64:}") String encryptionSecret) {
         this.jdbc = jdbc;
         this.environmentApiKey = environmentApiKey == null ? "" : environmentApiKey.trim();
+        this.environmentBrevoApiKey = environmentBrevoApiKey == null ? "" : environmentBrevoApiKey.trim();
         this.environmentModel = environmentModel == null || environmentModel.isBlank()
                 ? DEFAULT_MODEL : environmentModel.trim();
         if (encryptionSecret == null || encryptionSecret.isBlank()) {
@@ -44,20 +47,26 @@ public class AdminRuntimeSettingsService {
     }
 
     public record RuntimeConfig(String apiKey, String model) {}
+    public record BrevoRuntimeConfig(String apiKey) {}
 
     public Map<String, Object> getSettings() {
         String encrypted = findValue("openrouter.api-key");
         String model = findValue("openrouter.model");
+        String encryptedBrevo = findValue("brevo.api-key");
         boolean dashboardKey = encrypted != null && !encrypted.isBlank();
         boolean environmentKey = !environmentApiKey.isBlank();
-        return Map.of(
-                "provider", "OpenRouter",
-                "apiKeyConfigured", dashboardKey || environmentKey,
-                "apiKeySource", dashboardKey ? "Admin dashboard" : environmentKey ? "Environment" : "Not configured",
-                "model", model == null || model.isBlank() ? environmentModel : model,
-                "modelSource", model == null || model.isBlank() ? "Environment/default" : "Admin dashboard",
-                "encryptionKeyConfigured", encryptionKey != null,
-                "restartRequired", false
+        boolean dashboardBrevoKey = encryptedBrevo != null && !encryptedBrevo.isBlank();
+        boolean environmentBrevoKey = !environmentBrevoApiKey.isBlank();
+        return Map.ofEntries(
+                Map.entry("provider", "OpenRouter"),
+                Map.entry("apiKeyConfigured", dashboardKey || environmentKey),
+                Map.entry("apiKeySource", dashboardKey ? "Admin dashboard" : environmentKey ? "Environment" : "Not configured"),
+                Map.entry("model", model == null || model.isBlank() ? environmentModel : model),
+                Map.entry("modelSource", model == null || model.isBlank() ? "Environment/default" : "Admin dashboard"),
+                Map.entry("brevoApiKeyConfigured", dashboardBrevoKey || environmentBrevoKey),
+                Map.entry("brevoApiKeySource", dashboardBrevoKey ? "Admin dashboard" : environmentBrevoKey ? "Environment" : "Not configured"),
+                Map.entry("encryptionKeyConfigured", encryptionKey != null),
+                Map.entry("restartRequired", false)
         );
     }
 
@@ -69,13 +78,27 @@ public class AdminRuntimeSettingsService {
         return new RuntimeConfig(key, model == null || model.isBlank() ? environmentModel : model);
     }
 
+    public BrevoRuntimeConfig getBrevoRuntimeConfig() {
+        String encrypted = findValue("brevo.api-key");
+        String key = encrypted == null || encrypted.isBlank()
+                ? environmentBrevoApiKey : decrypt(encrypted);
+        return new BrevoRuntimeConfig(key);
+    }
+
     @Transactional
-    public void update(String apiKey, boolean clearApiKey, String model, String adminEmail) {
+    public void update(String apiKey, boolean clearApiKey, String model,
+            String brevoApiKey, boolean clearBrevoApiKey, String adminEmail) {
         if (clearApiKey) {
             jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='openrouter.api-key'");
         } else if (apiKey != null && !apiKey.isBlank()) {
             requireEncryptionKey();
             save("openrouter.api-key", encrypt(apiKey.trim()), adminEmail);
+        }
+        if (clearBrevoApiKey) {
+            jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='brevo.api-key'");
+        } else if (brevoApiKey != null && !brevoApiKey.isBlank()) {
+            requireEncryptionKey();
+            save("brevo.api-key", encrypt(brevoApiKey.trim()), adminEmail);
         }
         if (model != null && !model.isBlank()) {
             String normalized = model.trim();
@@ -118,7 +141,7 @@ public class AdminRuntimeSettingsService {
             return Base64.getEncoder().encodeToString(
                     ByteBuffer.allocate(nonce.length + ciphertext.length).put(nonce).put(ciphertext).array());
         } catch (Exception ex) {
-            throw new IllegalStateException("Could not encrypt the OpenRouter API key.", ex);
+            throw new IllegalStateException("Could not encrypt the API key.", ex);
         }
     }
 
@@ -135,7 +158,7 @@ public class AdminRuntimeSettingsService {
             cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(128, nonce));
             return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to decrypt the saved OpenRouter API key. Verify SETTINGS_ENCRYPTION_KEY_BASE64.", ex);
+            throw new IllegalStateException("Unable to decrypt a saved API key. Verify SETTINGS_ENCRYPTION_KEY_BASE64.", ex);
         }
     }
 }
