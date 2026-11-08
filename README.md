@@ -157,6 +157,97 @@ Access tokens are stateless JWTs and currently expire after 12 hours by default.
 
 The database stores the per-test subject allocation so a published test retains its exact blueprint.
 
+## Previous-year question bank (PYQ Challenge)
+
+The PYQ feature is separate from the OpenRouter/AI question generator. It uses only admin-imported questions from recorded previous-year sources. Each question keeps its subject, topic, C23 curriculum, source year, paper name, and original question number.
+
+### Examination rules
+- A student starts a fresh, randomised C23 paper: DCME 100, Mathematics 50, Physics 25, Chemistry 25.
+- 200 questions, 180 minutes, 200 marks; +1 for correct and 0 for incorrect/unanswered.
+- Question order and option order are independently randomised and snapshotted for that attempt, so refreshing does not change the paper.
+- Only verified and active questions enter the student exam pool.
+- A student may have only one in-progress PYQ attempt at a time. Students can access only their own attempt endpoints.
+- Admin-only monitoring endpoints show all student attempts and answer reviews. PYQ attempts are not mixed into the AI Grand/Daily test pool.
+
+### Admin API (ADMIN bearer token)
+
+Add one source question:
+
+```
+POST /api/v1/admin/pyq/questions
+Content-Type: application/json
+
+{
+  "subject": "DCME",
+  "topic": "Programming",
+  "curriculum": "C23",
+  "questionText": "Question text from the source paper?",
+  "explanation": "Optional explanation.",
+  "sourceYear": 2024,
+  "sourcePaper": "AP ECET DCME 2024",
+  "sourceQuestionNumber": 17,
+  "difficulty": "MEDIUM",
+  "verified": true,
+  "options": [
+    {"text":"Option A","correct":false},
+    {"text":"Option B","correct":true},
+    {"text":"Option C","correct":false},
+    {"text":"Option D","correct":false}
+  ]
+}
+```
+
+Bulk import 1–250 questions in one request:
+
+`POST /api/v1/admin/pyq/questions/bulk`
+
+The body is a JSON array of the same question objects shown above. Mark `verified: true` only after checking the question, options, correct answer, and source against the original paper. The exam refuses to start until the bank contains at least 100 verified DCME, 50 Mathematics, 25 Physics, and 25 Chemistry questions.
+
+List and audit imported questions:
+
+`GET /api/v1/admin/pyq/questions?subject=DCME&year=2024&includeUnverified=true`
+
+Register a paper after uploading its PDF to Supabase Storage:
+
+```
+POST /api/v1/admin/pyq/papers
+Content-Type: application/json
+
+{
+  "title": "AP ECET 2024 DCME Question Paper",
+  "examYear": 2024,
+  "branch": "DCME",
+  "curriculum": "C23",
+  "paperType": "QUESTION_PAPER",
+  "storagePath": "2024/DCME/question-paper.pdf",
+  "publicUrl": "https://YOUR_PROJECT.supabase.co/storage/v1/object/public/pyq-papers/2024/DCME/question-paper.pdf",
+  "sourceName": "Official source name",
+  "attribution": "Source / licence / permission details"
+}
+```
+
+Use a Supabase Storage bucket named `pyq-papers` (or your chosen bucket name). Keep PDF binaries in Storage, not PostgreSQL; PostgreSQL stores only the paper metadata and URL. The example public URL assumes a public bucket: anyone who obtains the URL can access that PDF. Upload only papers you are permitted to distribute. The app's paper catalogue endpoint itself requires a STUDENT token.
+
+### Student API (STUDENT bearer token)
+
+- `GET /api/v1/pyq/papers` — browse the C23 DCME paper library.
+- `POST /api/v1/pyq/attempts` — create a randomised 200-question attempt.
+- `GET /api/v1/pyq/attempts/{attemptId}` — retrieve that student's own question set and saved answers (no correct-answer flags).
+- `PUT /api/v1/pyq/attempts/{attemptId}/answers/{questionId}` with `{"optionId":"<option-uuid>"}` — save an answer.
+- `POST /api/v1/pyq/attempts/{attemptId}/submit` — calculate and store the result.
+- `GET /api/v1/pyq/my/results` — view only the authenticated student's PYQ attempt summaries.
+
+### Admin monitoring API (ADMIN bearer token)
+
+- `GET /api/v1/admin/pyq/attempts` — monitor all student PYQ attempts, including in-progress status.
+- `GET /api/v1/admin/pyq/attempts/{attemptId}/review` — inspect a student's question-by-question answers and correct answers.
+
+### Database and deployment notes
+
+Migration `V6__add_pyq_question_bank_and_exams.sql` is additive and Flyway-managed. It creates separate PYQ tables and indexes; it does not rewrite or delete existing AI assessment data. It is PostgreSQL-compatible and is applied automatically on the next backend startup/deployment. The question bank and attempt records live in the existing Supabase PostgreSQL database; PDF files live in Supabase Storage. No new paid service or extra database is required for this feature.
+
+Before enabling students, upload and verify enough C23 questions to meet the full 200-question blueprint, upload the permitted PDFs to Storage, register their metadata, and test with a STUDENT account. Run the backend and frontend test/build commands before merging this feature branch.
+
 ## Health Check URLs
 
 ### Application status:
