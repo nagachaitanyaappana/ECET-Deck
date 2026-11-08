@@ -210,7 +210,7 @@ List and audit imported questions:
 Register a paper by saving its PDF in Google Drive, setting General access to “Anyone with the link — Viewer”, and submitting its sharing URL in the Admin → PYQ Papers tab:
 
 ```
-POST /api/v1/admin/pyq/papers
+POST /api/v1/admin/pyq/papers/link
 Content-Type: application/json
 
 {
