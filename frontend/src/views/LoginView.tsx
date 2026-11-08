@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest, ApiError, getApiBaseUrl, setApiBaseUrl } from '../api/client';
 import type { AuthResponse } from '../types';
-import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server, ArrowRight, Sparkles, Eye, EyeOff, Mail, KeyRound, ArrowLeft } from 'lucide-react';
+import { BookOpen, LogIn, UserPlus, AlertCircle, CheckCircle, Settings, Server, ArrowRight, Sparkles, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 type AuthStep = 'credentials' | 'verify-email' | 'verify-login' | 'forgot' | 'reset';
 
