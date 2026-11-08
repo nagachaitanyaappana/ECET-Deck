@@ -1,6 +1,14 @@
-# ECET Desk API
+# Paradox — ECET Practice Platform
 
-Spring Boot backend for ECET Desk, a private daily ECET practice platform for a small group of DCME students.
+A private ECET practice platform for a small group of DCME students.
+
+## Public identity
+
+**Paradox** is the creator's chosen public alias and the product's public-facing identity. Use **Paradox** in the app's branding, UI, documentation, and public-facing project credits. Do not display or introduce the creator's personal name in the UI or public-facing copy.
+
+Tagline: **Prepare. Practice. Progress.**
+
+The application may use contextual labels such as **Paradox | ECET Preparation**, while keeping **Paradox** as the primary brand.
 
 ## Current status
 - Spring Boot 3.5 / Java 21
@@ -32,7 +40,7 @@ OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
 OPENROUTER_MODEL=openai/gpt-4o-mini
 BOOTSTRAP_ADMIN_EMAIL=admin@example.com
 BOOTSTRAP_ADMIN_PASSWORD=REPLACE_WITH_A_LONG_RANDOM_PASSWORD
-BOOTSTRAP_ADMIN_NAME=ECET Desk Admin
+BOOTSTRAP_ADMIN_NAME=Paradox Admin
 ```
 
 Use the exact host and username shown by Supabase under **Connect → Session pooler**. Do not add quotes around the values. Keep all secrets private.
@@ -160,7 +168,7 @@ Expected response shape:
 ```json
 {
   "status": "UP",
-  "message": "ECET Desk API is running",
+  "message": "Paradox API is running",
   "timestamp": "2026-11-08T14:10:00.000Z"
 }
 ```
@@ -192,7 +200,6 @@ The initial exam configuration target is 200 single-answer MCQs over 180 minutes
 - Chemistry: 25
 
 Scoring target: +1 for correct, 0 for incorrect or unanswered. Verify the current official AP ECET DCME pattern before publishing real practice tests.
-
 
 ## Assessment API (ADMIN unless stated otherwise)
 
