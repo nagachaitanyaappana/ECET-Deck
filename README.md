@@ -60,24 +60,30 @@ The command should print `.env`. Never force-add the real `.env` file.
 
 ## Run on Windows (PowerShell)
 
-No separate Maven installation is needed. From the repository root:
+### 1. Run the Backend (Spring Boot API):
+From the repository root:
 
 ```powershell
-.\\mvnw.cmd -version
 .\\mvnw.cmd spring-boot:run
 ```
 
-The first run downloads Apache Maven 3.9.11 into your user-level `.m2\wrapper\dists` folder. Later runs reuse that download.
-
 To run tests:
-
 ```powershell
 .\\mvnw.cmd test
 ```
 
-On Linux/macOS, use `./mvnw` (or `sh mvnw` if the executable bit is not set).
+### 2. Run the Frontend App (Android & Desktop):
+Open a second terminal:
 
-The first successful application startup runs Flyway migrations and creates the `app` schema, users table, and assessment tables. If bootstrap variables are set and no admin exists, it creates the first ADMIN account.
+```powershell
+cd frontend
+npm run dev
+```
+
+- **Desktop access:** Open `http://localhost:3000` in any browser.
+- **Android phone access:** Open the Network address displayed by Vite (e.g. `http://192.168.1.x:3000`) on your phone browser. In Chrome on Android, tap the menu (⋮) -> **"Add to Home screen"** or **"Install App"** to use it as a full-screen native-like app!
+
+The first successful backend startup runs Flyway migrations and creates the `app` schema, users table, and assessment tables. If bootstrap variables are set and no admin exists, it creates the first ADMIN account.
 
 ## Authentication API
 
@@ -143,27 +149,40 @@ Access tokens are stateless JWTs and currently expire after 12 hours by default.
 
 The database stores the per-test subject allocation so a published test retains its exact blueprint.
 
-## Test with Postman
+## Health Check URLs
 
+### Application status:
 ```
-GET http://localhost:8080/api/v1/health
+GET http://localhost:8080/
 ```
 
 Expected response shape:
-
 ```json
 {
   "status": "UP",
   "message": "ECET Desk API is running",
-  "timestamp": "..."
+  "timestamp": "2026-11-08T14:10:00.000Z"
 }
 ```
 
-Database health:
+### Database status:
+```
+GET http://localhost:8080/db/
+```
+(also supports `GET http://localhost:8080/db`)
 
+Expected response when connected:
+```json
+{
+  "status": "UP",
+  "database": "PostgreSQL",
+  "message": "Database connection is healthy",
+  "timestamp": "2026-11-08T14:10:00.000Z"
+}
 ```
-GET http://localhost:8080/actuator/health
-```
+If the database connection fails, it returns HTTP `503 Service Unavailable` with `"status": "DOWN"` and error details.
+
+Legacy endpoints (`/api/v1/health` and `/actuator/health`) remain available as aliases.
 
 ## Exam baseline
 The initial exam configuration target is 200 single-answer MCQs over 180 minutes:
@@ -227,9 +246,18 @@ Publish after the required counts and option validation pass:
 Student workflow (STUDENT token):
 - `GET /api/v1/tests` — list published tests available today.
 - `POST /api/v1/tests/{testId}/attempts` — start once; server records start time.
-- `GET /api/v1/attempts/{attemptId}` — retrieve questions and options (never correct-answer flags).
+- `GET /api/v1/attempts/{attemptId}` — retrieve questions and options (correct-answer flags hidden during test).
 - `PUT /api/v1/attempts/{attemptId}/answers/{questionId}` with `{"optionId":"<option-uuid>"}` — save/update an answer.
-- `POST /api/v1/attempts/{attemptId}/submit` — submit and calculate score/time.
-- `GET /api/v1/my/results` — view only the authenticated student's submitted results.
+- `POST /api/v1/attempts/{attemptId}/submit` — submit and calculate score/time. Grand tests exceeding duration + grace are marked `TIMED_OUT`.
+- `GET /api/v1/my/results` — view only the authenticated student's submitted results summary.
+- `GET /api/v1/attempts/{attemptId}/review` — view detailed review of a submitted attempt including questions, selected options, correct options, and the question explanation. Pass `?wrongOnly=true` to view only questions answered incorrectly or missed.
 
-Each student gets one attempt per test. Daily mocks do not expire; elapsed seconds are calculated from server-side start and submission timestamps. Grand Tests use the 180-minute blueprint, but automatic timeout handling is not yet part of this first assessment API iteration.
+Admin student management & analytics (ADMIN token):
+- `GET /api/v1/admin/students` — list registered student accounts.
+- `POST /api/v1/admin/students` — provision a new student account.
+- `GET /api/v1/admin/tests/{testId}/attempts` — list all student attempts and scores for a specific test.
+- `GET /api/v1/admin/students/{studentId}/attempts` — list all attempts by a specific student.
+- `GET /api/v1/admin/attempts/{attemptId}/review` — inspect any student's submitted attempt with answers and explanations.
+- `GET /api/v1/admin/analytics/leaderboard` — group standings, completion count, total score, and average score across your student group.
+
+Each student gets one attempt per test. Daily mocks do not expire; elapsed seconds are calculated from server-side start and submission timestamps. Grand Tests enforce the 180-minute limit (with network grace margin). Cross-Origin Resource Sharing (CORS) is enabled to support web and mobile app clients.

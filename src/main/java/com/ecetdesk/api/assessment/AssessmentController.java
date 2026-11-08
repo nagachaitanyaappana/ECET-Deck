@@ -72,6 +72,28 @@ public class AssessmentController {
         return service.getAttempt(attemptId, authentication.getName());
     }
 
+    @GetMapping("/attempts/{attemptId}/review")
+    public Map<String, Object> getAttemptReview(@PathVariable UUID attemptId,
+                                                @RequestParam(required = false, defaultValue = "false") boolean wrongOnly,
+                                                Authentication authentication) {
+        return service.getAttemptReview(attemptId, authentication.getName(), wrongOnly);
+    }
+
+    @GetMapping("/admin/tests/{testId}/attempts")
+    public List<Map<String, Object>> getTestAttemptsForAdmin(@PathVariable UUID testId) {
+        return service.getTestAttemptsForAdmin(testId);
+    }
+
+    @GetMapping("/admin/students/{studentId}/attempts")
+    public List<Map<String, Object>> getStudentAttemptsForAdmin(@PathVariable UUID studentId) {
+        return service.getStudentAttemptsForAdmin(studentId);
+    }
+
+    @GetMapping("/admin/analytics/leaderboard")
+    public List<Map<String, Object>> getLeaderboard() {
+        return service.getLeaderboard();
+    }
+
     @PutMapping("/attempts/{attemptId}/answers/{questionId}")
     public Map<String, Object> saveAnswer(@PathVariable UUID attemptId, @PathVariable UUID questionId,
                                           @Valid @RequestBody AnswerRequest request,
