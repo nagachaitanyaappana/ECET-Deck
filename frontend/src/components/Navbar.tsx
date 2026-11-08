@@ -22,14 +22,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onGoHome }) => {
           </div>
           <div>
             <div className="font-bold text-slate-900 leading-tight flex items-center gap-1.5">
-              Paradox
+              Paradox ECET Deck
               {isAdmin && (
                 <span className="text-[10px] font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                   <Shield className="w-2.5 h-2.5" /> ADMIN
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500">ECET practice workspace</p>
+            <p className="text-xs text-slate-500">Prepare. Practice. Progress.</p>
           </div>
         </button>
 
