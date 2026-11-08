@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../../api/client';
 import type { AvailableTest, StudentResultSummary, GrandTestRequest, FeedbackItem } from '../../types';
+import { PyqStudentPanel } from './PyqStudentPanel';
 import {
   Clock,
   CheckCircle2,
@@ -26,7 +27,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onStartTest,
   onReviewAttempt,
 }) => {
-  const [tab, setTab] = useState<'available' | 'results' | 'request' | 'feedback'>('available');
+  const [tab, setTab] = useState<'available' | 'pyq' | 'results' | 'request' | 'feedback'>('available');
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [results, setResults] = useState<StudentResultSummary[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -172,6 +173,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </button>
 
         <button
+          onClick={() => setTab('pyq')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <BookOpen className="w-4 h-4" />
+          PYQ Challenge
+        </button>
+
+        <button
           onClick={() => setTab('results')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'results'
@@ -296,6 +305,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             ))}
           </div>
         )
+      ) : tab === 'pyq' ? (
+        <PyqStudentPanel />
       ) : tab === 'results' ? (
         /* Results Tab */
         results.length === 0 ? (
