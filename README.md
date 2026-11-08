@@ -216,8 +216,6 @@ Content-Type: application/json
 {
   "title": "AP ECET 2024 DCME Question Paper",
   "examYear": 2024,
-  "branch": "DCME",
-  "curriculum": "C23",
   "paperType": "QUESTION_PAPER",
   "googleDriveUrl": "https://drive.google.com/file/d/GOOGLE_DRIVE_FILE_ID/view",
   "sourceName": "Official source name",
@@ -225,7 +223,7 @@ Content-Type: application/json
 }
 ```
 
-Use a Supabase Storage bucket named `pyq-papers` (or your chosen bucket name). Keep PDF binaries in Storage, not PostgreSQL; PostgreSQL stores only the paper metadata and URL. The example public URL assumes a public bucket: anyone who obtains the URL can access that PDF. Upload only papers you are permitted to distribute. The app's paper catalogue endpoint itself requires a STUDENT token.
+PDF binaries stay in Google Drive; PostgreSQL stores only the Drive file ID and sharing URL. Anyone with the sharing link can view the PDF. Only share papers you are permitted to distribute. The app's paper catalogue endpoint itself requires a STUDENT token.
 
 ### Student API (STUDENT bearer token)
 
