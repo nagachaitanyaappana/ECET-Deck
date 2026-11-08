@@ -19,7 +19,10 @@ import {
   MessageSquare,
   UploadCloud,
   Database,
-  PlusCircle
+  PlusCircle,
+  Settings,
+  KeyRound,
+  Save
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -27,7 +30,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions' | 'settings'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -78,6 +81,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [runtimeSettings, setRuntimeSettings] = useState<{apiKeyConfigured:boolean;apiKeySource:string;model:string;modelSource:string}|null>(null);
+  const [runtimeApiKey, setRuntimeApiKey] = useState('');
+  const [runtimeModel, setRuntimeModel] = useState('');
+  const [savingRuntimeSettings, setSavingRuntimeSettings] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todaysDailyMock = availableTests.find(
@@ -105,7 +112,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     setLoading(true);
     setMessage(null);
     try {
-      if (tab === 'tests') {
+      if (tab === 'settings') {\n        const data = await apiRequest<any>('/api/v1/admin/settings');\n        setRuntimeSettings(data);\n        setRuntimeModel(data.model || '');\n      } else if (tab === 'tests') {
         const tests = await apiRequest<any[]>('/api/v1/admin/tests');
         setAvailableTests(tests);
       } else if (tab === 'leaderboard') {
@@ -388,7 +395,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Segmented Pill Navigation Tabs */}
-      <div className="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/80 mb-8 overflow-x-auto gap-1 backdrop-blur-md">
+      <div className="sticky top-16 z-30 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 bg-slate-900/95 p-2 rounded-2xl border border-slate-800/80 mb-8 backdrop-blur-md shadow-xl">
         <button
           onClick={() => setTab('tests')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
@@ -494,9 +501,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
             </span>
           )}
         </button>
-      </div>
-
-      {message && (
+        <button
+          onClick={() => setTab('settings')}
+          className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl font-heading text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            tab === 'settings' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Server Settings
+        </button>
+      </div>\n\n      {message && (
         <div
           className={`mb-6 p-4 rounded-xl flex items-start gap-2.5 text-sm ${
             message.type === 'success'
@@ -520,6 +534,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </div>
       ) : (
         <>
+          {tab === 'settings' && (
+            <div className="max-w-3xl bg-white/95 rounded-3xl border border-white/20 p-6 sm:p-8 shadow-2xl text-slate-900 space-y-5">
+              <div>
+                <div className="flex items-center gap-2"><KeyRound className="w-5 h-5 text-blue-600"/><h2 className="text-lg font-bold">AI Provider Settings</h2></div>
+                <p className="text-sm text-slate-500 mt-1">Manage the OpenRouter credentials used for AI question generation. Changes apply without restarting the backend.</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div className="font-semibold">API key status: {runtimeSettings?.apiKeyConfigured ? 'Configured' : 'Not configured'}</div>
+                <div className="text-xs text-slate-500 mt-1">Current key source: {runtimeSettings?.apiKeySource || 'Loading...'}</div>
+                <p className="text-xs text-slate-500 mt-2">The saved key is encrypted in the database and is never displayed here.</p>
+              </div>
+              <label className="block text-sm font-semibold">OpenRouter API key
+                <input type="password" autoComplete="new-password" value={runtimeApiKey} onChange={e=>setRuntimeApiKey(e.target.value)} placeholder="Paste a new key to replace the current one" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-normal"/>
+              </label>
+              <label className="block text-sm font-semibold">Model
+                <input value={runtimeModel} onChange={e=>setRuntimeModel(e.target.value)} placeholder="openai/gpt-4o-mini" className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm font-normal"/>
+                <span className="block text-xs text-slate-500 font-normal mt-1">Current model source: {runtimeSettings?.modelSource || 'Environment/default'}</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                <button disabled={savingRuntimeSettings} onClick={async()=>{setSavingRuntimeSettings(true);try{const data=await apiRequest<any>('/api/v1/admin/settings',{method:'PUT',body:JSON.stringify({apiKey:runtimeApiKey,model:runtimeModel,clearApiKey:false})});setRuntimeSettings(data);setRuntimeApiKey('');setMessage({type:'success',text:'AI settings saved. New generations will use these settings.'});}catch(e:any){setMessage({type:'error',text:e.message||'Could not save settings.'});}finally{setSavingRuntimeSettings(false);}}} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 text-sm font-bold disabled:opacity-50"><Save className="w-4 h-4"/>{savingRuntimeSettings?'Saving...':'Save settings'}</button>
+                <button disabled={savingRuntimeSettings||!runtimeSettings?.apiKeyConfigured} onClick={async()=>{if(!window.confirm('Remove the dashboard API key override and fall back to the environment key?'))return;setSavingRuntimeSettings(true);try{const data=await apiRequest<any>('/api/v1/admin/settings',{method:'PUT',body:JSON.stringify({clearApiKey:true,model:runtimeModel})});setRuntimeSettings(data);setRuntimeApiKey('');setMessage({type:'success',text:'Dashboard key override removed.'});}catch(e:any){setMessage({type:'error',text:e.message||'Could not remove key.'});}finally{setSavingRuntimeSettings(false);}}} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 disabled:opacity-40">Remove dashboard key</button>
+              </div>
+              <div className="border-t border-slate-200 pt-4 text-xs text-slate-500 leading-relaxed">
+                Database credentials, JWT signing secret, bootstrap admin credentials, server port and frontend API URL remain deployment/environment configuration. They are deliberately not editable in the browser.
+              </div>
+            </div>
+          )}
+
           {tab === 'papers' && (
             <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6">
               <form onSubmit={handleRegisterPaper} className="bg-white/95 backdrop-blur-xl rounded-3xl border border-white/20 p-6 sm:p-7 space-y-4 shadow-2xl shadow-black/40 text-slate-900">
