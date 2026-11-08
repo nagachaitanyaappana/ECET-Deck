@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AssessmentService {
     private static final Map<String, Map<String, Integer>> BLUEPRINTS = Map.of(
-        "GRAND", Map.of("DCME",100,"MATHEMATICS",50,"PHYSICS",25,"CHEMISTRY",25),
+        "GRAND", Map.of("DCME",100,"MATHEMATICS",50,"PHYSICS",30,"CHEMISTRY",20),
         "DAILY", Map.of("DCME",25,"MATHEMATICS",13,"PHYSICS",6,"CHEMISTRY",6)
     );
     private final JdbcTemplate jdbc;
@@ -368,7 +368,7 @@ public class AssessmentService {
         }
         Map<String,Object> result = new LinkedHashMap<>();
         result.put("attemptId",attemptId); result.put("status",attempt.get("status"));
-        result.put("startedAt",attempt.get("started_at")); result.put("questions",questions);
+        result.put("startedAt",attempt.get("started_at")); result.put("durationMinutes",attempt.get("duration_minutes")); result.put("questions",questions);
         return result;
     }
 
@@ -400,8 +400,8 @@ public class AssessmentService {
         if (duration != null && duration.intValue() > 0) {
             java.sql.Timestamp startedAt = (java.sql.Timestamp) attempt.get("started_at");
             if (startedAt != null) {
-                long maxDurationMillis = (duration.intValue() + 2) * 60 * 1000L;
-                if (System.currentTimeMillis() - startedAt.getTime() > maxDurationMillis) {
+                long maxDurationMillis = duration.intValue() * 60 * 1000L;
+                if (System.currentTimeMillis() - startedAt.getTime() >= maxDurationMillis) {
                     attemptStatus = "TIMED_OUT";
                 }
             }
@@ -638,9 +638,9 @@ public class AssessmentService {
         if (duration != null && duration.intValue() > 0) {
             java.sql.Timestamp startedAt = (java.sql.Timestamp) attempt.get("started_at");
             if (startedAt != null) {
-                long maxDurationMillis = (duration.intValue() + 2) * 60 * 1000L;
-                if (System.currentTimeMillis() - startedAt.getTime() > maxDurationMillis) {
-                    throw conflict("The time limit for this test has expired (" + duration + " minutes). Please submit your test.");
+                long maxDurationMillis = duration.intValue() * 60 * 1000L;
+                if (System.currentTimeMillis() - startedAt.getTime() >= maxDurationMillis) {
+                    throw conflict("The time limit for this test has expired (" + duration + " minutes). Your attempt must be submitted.");
                 }
             }
         }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../api/client';
 import { BookOpen, Clock3, FileText, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -16,6 +16,7 @@ export const PyqStudentPanel: React.FC = () => {
   const [busy,setBusy]=useState(true);
   const [error,setError]=useState('');
   const [result,setResult]=useState<any>(null);
+  const autoSubmitStarted=useRef(false);
 
   useEffect(()=>{
     Promise.all([
@@ -30,7 +31,16 @@ export const PyqStudentPanel: React.FC = () => {
     if(view!=='exam'||!attempt) return;
     const tick=()=>{
       const elapsed=Math.floor((Date.now()-new Date(attempt.startedAt).getTime())/1000);
-      setSecondsLeft(Math.max(0,attempt.durationMinutes*60-elapsed));
+      const remaining=Math.max(0,attempt.durationMinutes*60-elapsed);
+      setSecondsLeft(remaining);
+      if(remaining===0&&!autoSubmitStarted.current){
+        autoSubmitStarted.current=true;
+        setBusy(true);
+        apiRequest('/api/v1/pyq/attempts/'+attempt.attemptId+'/submit',{method:'POST'})
+          .then(data=>{setResult(data);setView('result');})
+          .catch(e=>{setError(e.message||'Automatic submission failed. Please submit now.');})
+          .finally(()=>setBusy(false));
+      }
     };
     tick();
     const timer=window.setInterval(tick,1000);
@@ -43,6 +53,7 @@ export const PyqStudentPanel: React.FC = () => {
   const start=async()=>{
     setBusy(true);setError('');
     try{
+      autoSubmitStarted.current=false;
       const data=await apiRequest<Attempt>('/api/v1/pyq/attempts',{method:'POST'});
       setAttempt(data);setIndex(0);setView('exam');
     }catch(e:any){setError(e.message||'Unable to start the PYQ Challenge.');}
@@ -60,6 +71,7 @@ export const PyqStudentPanel: React.FC = () => {
   const submit=async()=>{
     if(!attempt||busy)return;
     if(!window.confirm('Submit your PYQ Challenge? You cannot change answers afterwards.'))return;
+    autoSubmitStarted.current=true;
     setBusy(true);setError('');
     try{
       const data=await apiRequest('/api/v1/pyq/attempts/'+attempt.attemptId+'/submit',{method:'POST'});
@@ -99,7 +111,7 @@ export const PyqStudentPanel: React.FC = () => {
       <h2 className="text-2xl font-bold text-slate-900">PYQ Challenge submitted</h2>
       <p className="text-slate-500 mt-2">{result.status==='TIMED_OUT'?'Time limit reached.':'Your result is ready.'}</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-7">{[['Score',result.score],['Correct',result.correctCount],['Incorrect',result.incorrectCount],['Unanswered',result.unansweredCount]].map(([label,value])=><div key={String(label)} className="bg-slate-50 rounded-xl p-4"><div className="text-2xl font-black text-slate-900">{value}</div><div className="text-xs text-slate-500">{label}</div></div>)}</div>
-      <button onClick={()=>{setAttempt(null);setResult(null);setView('home');}} className="mt-7 px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold">Back to PYQ section</button>
+      <button onClick={()=>{setAttempt(null);setResult(null);setView('home');autoSubmitStarted.current=false;}} className="mt-7 px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold">Back to PYQ section</button>
     </section>;
   }
   return <section className="space-y-6">
@@ -107,7 +119,7 @@ export const PyqStudentPanel: React.FC = () => {
     <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7">
       <div className="flex items-center gap-3 mb-2"><BookOpen className="w-6 h-6 text-blue-600"/><h2 className="text-xl font-bold text-slate-900">PYQ Challenge</h2></div>
       <p className="text-sm text-slate-600 leading-relaxed">A fresh, randomised 200-question C23 examination drawn only from verified previous-year ECET questions. Each attempt gets its own question and option order.</p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">{[['DCME','100'],['Mathematics','50'],['Physics','25'],['Chemistry','25']].map(([s,n])=><div key={s} className="bg-slate-50 rounded-xl p-3"><div className="font-bold text-slate-900">{n}</div><div className="text-xs text-slate-500">{s}</div></div>)}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">{[['DCME','100'],['Mathematics','50'],['Physics','30'],['Chemistry','20']].map(([s,n])=><div key={s} className="bg-slate-50 rounded-xl p-3"><div className="font-bold text-slate-900">{n}</div><div className="text-xs text-slate-500">{s}</div></div>)}</div>
       <p className="text-xs text-slate-500 mb-4">180 minutes · 200 marks · +1 correct · 0 incorrect</p>
       <button onClick={start} disabled={busy} className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50">{busy?'Preparing your random paper...':'Start PYQ Challenge'}</button>
     </div>

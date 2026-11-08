@@ -11,7 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class PyqService {
     private static final Map<String,Integer> BLUEPRINT = Map.of(
-        "DCME",100, "MATHEMATICS",50, "PHYSICS",25, "CHEMISTRY",25
+        "DCME",100, "MATHEMATICS",50, "PHYSICS",30, "CHEMISTRY",20
     );
     private final JdbcTemplate jdbc;
 
@@ -252,7 +252,7 @@ public class PyqService {
         int t=total==null?0:total, an=answered==null?0:answered, c=correct==null?0:correct;
         int incorrect=an-c, unanswered=t-an;
         long elapsed=getElapsedSeconds(attemptId);
-        String status=elapsed>=(long)((Number)a.get("duration_minutes")).intValue()*60+120?"TIMED_OUT":"SUBMITTED";
+        String status=elapsed>=(long)((Number)a.get("duration_minutes")).intValue()*60?"TIMED_OUT":"SUBMITTED";
         jdbc.update("""
             UPDATE pyq_student_answers sa SET is_correct=o.is_correct
             FROM pyq_question_options o WHERE o.id=sa.selected_option_id AND sa.attempt_id=?
@@ -322,7 +322,7 @@ public class PyqService {
     }
     private void ensureWithinTime(Map<String,Object> a) {
         long seconds=getElapsedSeconds((UUID) a.get("id"));
-        if(seconds>((long)((Number)a.get("duration_minutes")).intValue()+2)*60)
+        if(seconds>=((long)((Number)a.get("duration_minutes")).intValue())*60)
             throw conflict("The 180-minute PYQ Challenge time limit has expired.");
     }
     private long getElapsedSeconds(UUID attemptId) {

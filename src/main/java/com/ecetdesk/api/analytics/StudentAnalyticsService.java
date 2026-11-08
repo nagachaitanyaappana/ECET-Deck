@@ -36,7 +36,9 @@ public class StudentAnalyticsService {
         for (Map<String,Object> item : history) {
             double percent = percent(item.get("score"), item.get("totalMarks"));
             String type = (String)item.get("assessmentType");
-            Double previous = previousByType.put(type, percent);
+            String category = (String)item.get("testCategory");
+            String comparisonGroup = type + ":" + category;
+            Double previous = previousByType.put(comparisonGroup, percent);
             item.put("percentage", Math.round(percent * 10.0) / 10.0);
             item.put("changeFromPrevious", previous == null ? null : Math.round((percent - previous) * 10.0) / 10.0);
         }
