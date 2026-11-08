@@ -6,6 +6,7 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 public class PyqController {
     private final PyqService service;
-    public PyqController(PyqService service) { this.service=service; }
+    private final SupabasePaperStorageService storage;
+    public PyqController(PyqService service, SupabasePaperStorageService storage) { this.service=service; this.storage=storage; }
 
     // ADMIN: curate and verify source questions before they enter the student exam pool.
     @PostMapping("/admin/pyq/questions")
@@ -48,6 +50,29 @@ public class PyqController {
         return service.createPaper(new PyqService.PaperRequest(request.title(),request.examYear(),
             request.branch(),request.curriculum(),request.paperType(),request.storagePath(),
             request.publicUrl(),request.sourceName(),request.attribution()));
+    }
+
+    @GetMapping("/admin/pyq/papers")
+    public List<Map<String,Object>> adminPapers() { return service.listPapers("DCME","C23"); }
+
+    @PostMapping(value="/admin/pyq/papers/upload", consumes="multipart/form-data")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String,Object> uploadPaper(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("title") String title,
+        @RequestParam("examYear") Integer examYear,
+        @RequestParam("paperType") String paperType,
+        @RequestParam(value="sourceName", required=false) String sourceName,
+        @RequestParam(value="attribution", required=false) String attribution) {
+        if (title == null || title.isBlank() || title.length() > 180)
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a paper title (up to 180 characters).");
+        if (examYear == null || examYear < 2000 || examYear > 2100)
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a valid exam year.");
+        if (!"QUESTION_PAPER".equals(paperType) && !"ANSWER_KEY".equals(paperType))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Paper type must be QUESTION_PAPER or ANSWER_KEY.");
+        SupabasePaperStorageService.UploadedPaper uploaded = storage.upload(file,examYear,paperType);
+        return service.createPaper(new PyqService.PaperRequest(title,examYear,"DCME","C23",paperType,
+            uploaded.storagePath(),uploaded.publicUrl(),sourceName,attribution));
     }
 
     @GetMapping("/admin/pyq/attempts")
