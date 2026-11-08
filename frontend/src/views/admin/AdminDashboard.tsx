@@ -362,7 +362,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Tabs */}
-      <div className="dashboard-tabs">
+      <div className="sticky top-16 z-30 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 bg-white/95 p-2 rounded-2xl border border-slate-200 mb-8 backdrop-blur-md shadow-sm">
         <button
           onClick={() => setTab('tests')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
