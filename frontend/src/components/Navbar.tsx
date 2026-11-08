@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, BookOpen, Shield, Sparkles } from 'lucide-react';
+import { LogOut, BookOpen, Shield } from 'lucide-react';
 
 interface NavbarProps {
   onGoHome?: () => void;
