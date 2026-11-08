@@ -13,7 +13,7 @@ export const PyqStudentPanel: React.FC = () => {
   const [attempt,setAttempt]=useState<Attempt|null>(null);
   const [index,setIndex]=useState(0);
   const [secondsLeft,setSecondsLeft]=useState(180*60);
-  const [busy,setBusy]=useState(false);
+  const [busy,setBusy]=useState(true);
   const [error,setError]=useState('');
   const [result,setResult]=useState<any>(null);
 
@@ -24,7 +24,7 @@ export const PyqStudentPanel: React.FC = () => {
     ]).then(([paperData,current])=>{
       setPapers(paperData);
       if(current?.active){setAttempt(current as Attempt);setView('exam');}
-    }).catch(e=>setError(e.message||'Could not load the PYQ section.'));
+    }).catch(e=>setError(e.message||'Could not load the PYQ section.')).finally(()=>setBusy(false));
   },[]);
   useEffect(()=>{
     if(view!=='exam'||!attempt) return;
