@@ -638,8 +638,8 @@ public class AssessmentService {
         if (duration != null && duration.intValue() > 0) {
             java.sql.Timestamp startedAt = (java.sql.Timestamp) attempt.get("started_at");
             if (startedAt != null) {
-                long maxDurationMillis = (duration.intValue() + 2) * 60 * 1000L;
-                if (System.currentTimeMillis() - startedAt.getTime() > maxDurationMillis) {
+                long maxDurationMillis = duration.intValue() * 60 * 1000L;
+                if (System.currentTimeMillis() - startedAt.getTime() >= maxDurationMillis) {
                     throw conflict("The time limit for this test has expired (" + duration + " minutes). Your attempt must be submitted.");
                 }
             }
