@@ -53,7 +53,12 @@ public class PyqController {
     }
 
     @GetMapping("/admin/pyq/papers")
-    public List<Map<String,Object>> adminPapers() { return service.listPapers("DCME","C23"); }
+    public List<Map<String,Object>> adminPapers() { return service.listAdminPapers(); }
+
+    @PatchMapping("/admin/pyq/papers/{paperId}/active")
+    public Map<String,Object> setPaperActive(@PathVariable UUID paperId, @Valid @RequestBody PaperActivePayload request) {
+        return service.setPaperActive(paperId,request.active());
+    }
 
     @PostMapping(value="/admin/pyq/papers/upload", consumes="multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
@@ -139,4 +144,5 @@ public class PyqController {
         @NotBlank @Pattern(regexp="QUESTION_PAPER|ANSWER_KEY") String paperType,
         @NotBlank String storagePath,String publicUrl,String sourceName,String attribution) {}
     public record AnswerPayload(@NotNull UUID optionId) {}
+    public record PaperActivePayload(@NotNull Boolean active) {}
 }
