@@ -278,7 +278,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
             </div>
 
             {/* Grid of question buttons */}
-            <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto p-1">
+            <div className="grid grid-cols-5 gap-2 max-h-[55vh] overflow-y-auto p-1">
               {filteredQuestions.map((q, idx) => {
                 const isAnswered = !!answers[q.id];
                 const isCurrent = idx === currentIndex;
@@ -290,7 +290,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
                       setCurrentIndex(idx);
                       setShowPaletteMobile(false);
                     }}
-                    className={`h-9 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center ${
+                    className={`min-h-11 rounded-lg font-bold text-sm transition-all cursor-pointer flex items-center justify-center ${
                       isCurrent
                         ? 'ring-2 ring-blue-600 ring-offset-2'
                         : ''
@@ -310,7 +310,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
           <div className="pt-4 border-t border-slate-100">
             <button
               onClick={() => setShowConfirmModal(true)}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="w-full min-h-12 py-3 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Submit Assessment</span>
@@ -347,7 +347,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="flex-1 min-h-11 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
                 Continue Test
               </button>
@@ -355,7 +355,7 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmit}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer flex items-center justify-center"
+                className="flex-1 min-h-11 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer flex items-center justify-center"
               >
                 {submitting ? 'Grading...' : 'Yes, Submit'}
               </button>

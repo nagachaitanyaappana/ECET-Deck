@@ -77,18 +77,18 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ attemptId, onBack }) => 
       : review.questions.filter((q) => q.subject === selectedSubject);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
       {/* Back button */}
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs mb-4 cursor-pointer"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-xs mb-5 min-h-11 cursor-pointer"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Dashboard
       </button>
 
       {/* Hero Scorecard */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs mb-6">
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm mb-7">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div>
             <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ attemptId, onBack }) => 
           <div className="flex rounded-xl bg-slate-100 p-1">
             <button
               onClick={() => setOnlyWrong(true)}
-              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`text-sm font-bold px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
                 onlyWrong
                   ? 'bg-rose-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -199,7 +199,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ attemptId, onBack }) => 
             <button
               key={sub}
               onClick={() => setSelectedSubject(sub)}
-              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
+              className={`text-xs font-semibold px-3 py-2 rounded-lg shrink-0 transition-colors cursor-pointer ${
                 selectedSubject === sub
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -230,7 +230,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ attemptId, onBack }) => 
             return (
               <div
                 key={q.questionId}
-                className={`bg-white rounded-2xl border p-5 sm:p-6 shadow-xs transition-shadow ${
+                className={`bg-white rounded-2xl border p-5 sm:p-7 shadow-sm transition-shadow ${
                   q.isWrong
                     ? 'border-rose-200 bg-gradient-to-b from-rose-50/20 to-white'
                     : 'border-slate-200'
