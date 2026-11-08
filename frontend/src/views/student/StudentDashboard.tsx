@@ -11,6 +11,7 @@ import {
   ArrowRight,
   BookOpen,
   Award,
+  Activity,
   AlertCircle,
   Zap,
   MessageSquare,
