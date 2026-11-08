@@ -17,7 +17,15 @@ export const PyqStudentPanel: React.FC = () => {
   const [error,setError]=useState('');
   const [result,setResult]=useState<any>(null);
 
-  useEffect(()=>{ apiRequest<Paper[]>('/api/v1/pyq/papers').then(setPapers).catch(e=>setError(e.message)); },[]);
+  useEffect(()=>{
+    Promise.all([
+      apiRequest<Paper[]>('/api/v1/pyq/papers'),
+      apiRequest<any>('/api/v1/pyq/attempts/current')
+    ]).then(([paperData,current])=>{
+      setPapers(paperData);
+      if(current?.active){setAttempt(current as Attempt);setView('exam');}
+    }).catch(e=>setError(e.message||'Could not load the PYQ section.'));
+  },[]);
   useEffect(()=>{
     if(view!=='exam'||!attempt) return;
     const tick=()=>{
