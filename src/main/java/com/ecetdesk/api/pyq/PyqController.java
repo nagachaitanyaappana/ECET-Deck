@@ -19,10 +19,20 @@ public class PyqController {
     @PostMapping("/admin/pyq/questions")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String,Object> createQuestion(@Valid @RequestBody QuestionPayload request) {
-        return service.createQuestion(new PyqService.QuestionRequest(request.subject(),request.topic(),
-            request.curriculum(),request.questionText(),request.explanation(),request.sourceYear(),
-            request.sourcePaper(),request.sourceQuestionNumber(),request.difficulty(),request.verified(),
-            request.options().stream().map(o -> new PyqService.OptionRequest(o.text(),o.correct())).toList()));
+        return service.createQuestion(toQuestionRequest(request));
+    }
+
+    @PostMapping("/admin/pyq/questions/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<Map<String,Object>> bulkImport(@RequestBody @NotEmpty @Size(max=250) List<@Valid QuestionPayload> requests) {
+        return service.createQuestions(requests.stream().map(this::toQuestionRequest).toList());
+    }
+
+    private PyqService.QuestionRequest toQuestionRequest(QuestionPayload request) {
+        return new PyqService.QuestionRequest(request.subject(),request.topic(),request.curriculum(),
+            request.questionText(),request.explanation(),request.sourceYear(),request.sourcePaper(),
+            request.sourceQuestionNumber(),request.difficulty(),request.verified(),
+            request.options().stream().map(o -> new PyqService.OptionRequest(o.text(),o.correct())).toList());
     }
 
     @GetMapping("/admin/pyq/questions")
