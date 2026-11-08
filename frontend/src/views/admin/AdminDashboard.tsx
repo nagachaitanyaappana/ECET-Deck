@@ -20,7 +20,8 @@ import {
   MessageSquare,
   UploadCloud,
   Database,
-  PlusCircle
+  PlusCircle,
+  Server
 } from 'lucide-react';
 
 interface AdminDashboardProps {
