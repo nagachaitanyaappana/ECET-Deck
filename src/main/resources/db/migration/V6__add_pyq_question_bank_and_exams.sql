@@ -59,6 +59,8 @@ CREATE TABLE pyq_attempts (
 );
 CREATE INDEX idx_pyq_attempts_student ON pyq_attempts(student_id, started_at DESC);
 CREATE INDEX idx_pyq_attempts_status ON pyq_attempts(status, started_at DESC);
+-- Enforce one active PYQ exam per student even if two start requests arrive simultaneously.
+CREATE UNIQUE INDEX uk_pyq_one_active_attempt_per_student ON pyq_attempts(student_id) WHERE status = 'IN_PROGRESS';
 
 CREATE TABLE pyq_attempt_questions (
     attempt_id UUID NOT NULL REFERENCES pyq_attempts(id) ON DELETE CASCADE,
@@ -67,6 +69,7 @@ CREATE TABLE pyq_attempt_questions (
     PRIMARY KEY(attempt_id, question_id),
     UNIQUE(attempt_id, question_order)
 );
+ALTER TABLE pyq_question_options ADD CONSTRAINT uk_pyq_option_question UNIQUE(question_id, id);
 CREATE TABLE pyq_attempt_options (
     attempt_id UUID NOT NULL,
     question_id UUID NOT NULL,
