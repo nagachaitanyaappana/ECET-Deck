@@ -1,0 +1,25 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IDEs ###
+.idea/
+*.iws
+*.iml
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Local secrets ###
+.env
+.env.*
+!.env.example
+application-local.properties
