@@ -16,7 +16,8 @@ import {
   Calendar,
   RefreshCw,
   FileText,
-  MessageSquare
+  MessageSquare,
+  UploadCloud
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -24,7 +25,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -43,6 +44,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   const [testAttempts, setTestAttempts] = useState<any[]>([]);
   const [pyqAttempts, setPyqAttempts] = useState<any[]>([]);
   const [pyqReview, setPyqReview] = useState<any | null>(null);
+  const [pyqPapers, setPyqPapers] = useState<any[]>([]);
+  const [paperTitle, setPaperTitle] = useState('');
+  const [paperYear, setPaperYear] = useState(String(new Date().getFullYear()));
+  const [paperType, setPaperType] = useState<'QUESTION_PAPER' | 'ANSWER_KEY'>('QUESTION_PAPER');
+  const [paperSource, setPaperSource] = useState('');
+  const [paperAttribution, setPaperAttribution] = useState('');
+  const [paperFile, setPaperFile] = useState<File | null>(null);
+  const [uploadingPaper, setUploadingPaper] = useState(false);
   const [selectedTestId, setSelectedTestId] = useState<string>('');
   const [availableTests, setAvailableTests] = useState<any[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -99,6 +108,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           setSelectedTestId(tests[0].id);
           loadTestAttempts(tests[0].id);
         }
+      } else if (tab === 'papers') {
+        const data = await apiRequest<any[]>('/api/v1/admin/pyq/papers');
+        setPyqPapers(data);
       } else if (tab === 'pyq') {
         const data = await apiRequest<any[]>('/api/v1/admin/pyq/attempts');
         setPyqAttempts(data);
@@ -126,6 +138,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to load attempts for this test' });
     }
+  };
+
+  const handleUploadPaper = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!paperFile) { setMessage({ type: 'error', text: 'Choose a PDF file first.' }); return; }
+    setUploadingPaper(true); setMessage(null);
+    try {
+      const form = new FormData();
+      form.append('file', paperFile);
+      form.append('title', paperTitle.trim());
+      form.append('examYear', paperYear);
+      form.append('paperType', paperType);
+      form.append('sourceName', paperSource.trim());
+      form.append('attribution', paperAttribution.trim());
+      await apiRequest('/api/v1/admin/pyq/papers/upload', { method: 'POST', body: form });
+      setMessage({ type: 'success', text: 'PDF uploaded and added to the student paper library.' });
+      setPaperTitle(''); setPaperSource(''); setPaperAttribution(''); setPaperFile(null);
+      const input = document.getElementById('pyq-paper-file') as HTMLInputElement | null;
+      if (input) input.value = '';
+      const papers = await apiRequest<any[]>('/api/v1/admin/pyq/papers');
+      setPyqPapers(papers);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'PDF upload failed.' });
+    } finally { setUploadingPaper(false); }
   };
 
   // 1-Click Automated Generation
@@ -336,6 +372,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </button>
 
         <button
+          onClick={() => setTab('papers')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'papers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <UploadCloud className="w-4 h-4" />
+          PYQ Papers
+        </button>
+
+        <button
           onClick={() => setTab('pyq')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
         >
@@ -385,6 +429,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </div>
       ) : (
         <>
+          {tab === 'papers' && (
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
+              <form onSubmit={handleUploadPaper} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+                <div><h2 className="text-lg font-bold text-slate-900">Upload a previous-year paper</h2><p className="text-sm text-slate-500 mt-1">The backend uploads the PDF to Supabase Storage and registers it for students.</p></div>
+                <label className="block text-sm font-medium text-slate-700">Paper title<input required maxLength={180} value={paperTitle} onChange={e=>setPaperTitle(e.target.value)} placeholder="ECET DCME 2025 Question Paper" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block text-sm font-medium text-slate-700">Exam year<input required type="number" min="2000" max="2100" value={paperYear} onChange={e=>setPaperYear(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                  <label className="block text-sm font-medium text-slate-700">Document type<select value={paperType} onChange={e=>setPaperType(e.target.value as any)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"><option value="QUESTION_PAPER">Question paper</option><option value="ANSWER_KEY">Answer key</option></select></label>
+                </div>
+                <label className="block text-sm font-medium text-slate-700">PDF file (max 20 MB)<input id="pyq-paper-file" required type="file" accept="application/pdf,.pdf" onChange={e=>setPaperFile(e.target.files?.[0]||null)} className="mt-1 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700"/></label>
+                <label className="block text-sm font-medium text-slate-700">Source / publisher (optional)<input value={paperSource} onChange={e=>setPaperSource(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <label className="block text-sm font-medium text-slate-700">Attribution / notes (optional)<textarea value={paperAttribution} onChange={e=>setPaperAttribution(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5"/></label>
+                <button disabled={uploadingPaper} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 disabled:opacity-50">{uploadingPaper?'Uploading PDF...':'Upload and publish paper'}</button>
+                <p className="text-xs text-slate-400">Only upload papers you have permission to distribute. Files are stored in the configured Supabase Storage bucket.</p>
+              </form>
+              <div className="bg-white rounded-2xl border border-slate-200 p-5">
+                <h2 className="text-lg font-bold text-slate-900">Published papers</h2>
+                <div className="divide-y divide-slate-100 mt-3">
+                  {pyqPapers.map(p=><div key={p.id} className="py-3 flex items-center justify-between gap-3"><div><div className="font-semibold text-sm text-slate-800">{p.title}</div><div className="text-xs text-slate-500">{p.examYear} · {p.paperType==='ANSWER_KEY'?'Answer key':'Question paper'} · {p.curriculum}</div></div>{p.publicUrl&&<a href={p.publicUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-700">Open PDF</a>}</div>)}
+                  {pyqPapers.length===0&&<p className="text-sm text-slate-500 py-5">No papers uploaded yet.</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === 'pyq' && (
             <div className="space-y-5">
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
