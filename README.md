@@ -4,7 +4,7 @@
 
 A focused ECET preparation platform for DCME students, bringing practice tests, previous-year questions, and personal progress tracking together in one place.
 
-> **Paradox** is the product identity. The platform is being built for a small private study group, with a clean experience across web and future mobile/desktop apps.
+> **Paradox** is the product identity. The platform is built for a small private study group, with a web application and an Android application.
 
 ## Public identity
 
@@ -84,7 +84,7 @@ To run tests:
 .\\mvnw.cmd test
 ```
 
-### 2. Run the Frontend App (Android & Desktop):
+### 2. Run the Web Frontend:
 Open a second terminal:
 
 ```powershell
@@ -92,8 +92,9 @@ cd frontend
 npm run dev
 ```
 
-- **Desktop access:** Open `http://localhost:3000` in any browser.
-- **Android phone access:** Open the Network address displayed by Vite (e.g. `http://192.168.1.x:3000`) on your phone browser. In Chrome on Android, tap the menu (⋮) -> **"Add to Home screen"** or **"Install App"** to use it as a full-screen native-like app!
+- **Desktop access:** Open `http://localhost:3000` in any browser. This is the web application; there is no separate Windows desktop application.
+- **Android development:** The native Android project is in `frontend/android`. Set `VITE_API_URL` to the backend URL before building. For local HTTP-only emulator testing, set `CAPACITOR_CLEAR_TEXT=true` before running `npm run android:sync`; do not enable cleartext traffic in production.
+- **Android production:** Build with `VITE_API_URL` set to your deployed HTTPS backend and leave `CAPACITOR_CLEAR_TEXT` unset or `false`.
 
 The first successful backend startup runs Flyway migrations and creates the `app` schema, users table, and assessment tables. If bootstrap variables are set and no admin exists, it creates the first ADMIN account.
 
