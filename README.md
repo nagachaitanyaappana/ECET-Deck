@@ -359,3 +359,23 @@ Admin student management & analytics (ADMIN token):
 - `GET /api/v1/admin/analytics/leaderboard` — group standings, completion count, total score, and average score across your student group.
 
 Each student gets one attempt per test. Daily mocks do not expire; elapsed seconds are calculated from server-side start and submission timestamps. Grand Tests enforce the 180-minute limit (with network grace margin). Cross-Origin Resource Sharing (CORS) is enabled to support web and mobile app clients.
+
+
+## Personal progress analytics
+
+- Students can view their own score history, personal best, recent average, and preparation status.
+- Score changes are calculated against that student's previous attempt of the same assessment type (AI mock or PYQ); students are never ranked or compared against other students in this view.
+- Subject accuracy combines completed AI mock and PYQ attempts. Topic-level recommendations use only topic-tagged PYQ questions and require at least three observed answers.
+- Preparation labels use the last three completed attempts where available. They are guidance, not a prediction or guarantee of an ECET result.
+
+## Admin PYQ PDF uploads
+
+The Admin Control Center includes a **PYQ Papers** section. Admins can upload a PDF (maximum 20 MB), enter its title/year/document type, and publish or hide it from the student catalogue. The backend sends the file to Supabase Storage using a server-side service-role key; that key must never be exposed to the frontend.
+
+Configure these backend environment variables in the local root `.env` and the deployment platform:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (secret; never commit it or add it to a `VITE_*` variable)
+- `SUPABASE_STORAGE_BUCKET` (defaults to `pyq-papers`)
+
+Create the configured Supabase Storage bucket before uploading. The current student catalogue uses public PDF URLs, so the `pyq-papers` bucket must be public for direct student viewing. Anyone who obtains a public file URL can access that file; use a private bucket and signed-URL flow instead if authenticated-only file access is required. Upload only papers you are permitted to distribute.
