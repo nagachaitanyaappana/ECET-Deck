@@ -124,9 +124,9 @@ public class AssessmentService {
         return jdbc.queryForList("""
             SELECT id,title,test_type AS \"testType\",scheduled_date AS \"scheduledDate\",
                    question_count AS \"questionCount\",duration_minutes AS \"durationMinutes\",total_marks AS \"totalMarks\"
-            FROM tests WHERE status='PUBLISHED' AND (test_type='GRAND' OR scheduled_date=CURRENT_DATE)
+            FROM tests WHERE status='PUBLISHED' AND (test_type='GRAND' OR scheduled_date=?)
             ORDER BY published_at DESC
-            """);
+            """,LocalDate.now(ZoneId.of("Asia/Kolkata")));
     }
 
     @Transactional
