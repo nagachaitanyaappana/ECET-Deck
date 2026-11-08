@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiRequest } from '../../api/client';
 import type { LeaderboardEntry, GrandTestRequest, FeedbackItem } from '../../types';
+import { Server } from 'lucide-react';
+import { ServerSettingsPanel } from './ServerSettingsPanel';
 import {
   Sparkles,
   Zap,
@@ -27,7 +29,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
-  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions'>('tests');
+  const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions' | 'settings'>('tests');
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -360,7 +362,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Tabs */}
-      <div className="dashboard-tabs">
+      <div className="sticky top-16 z-30 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 bg-white/95 p-2 rounded-2xl border border-slate-200 mb-8 backdrop-blur-md shadow-sm">
         <button
           onClick={() => setTab('tests')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
@@ -439,6 +441,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </button>
 
         <button
+          onClick={() => setTab('settings')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'settings' ? 'border-lime-600 text-lime-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          <Server className="w-4 h-4" />
+          Server Settings
+        </button>
+
+        <button
           onClick={() => setTab('feedbacks')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'feedbacks'
@@ -480,6 +490,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </div>
       ) : (
         <>
+          {tab === 'settings' && <ServerSettingsPanel />}
+
           {tab === 'papers' && (
             <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5">
               <form onSubmit={handleRegisterPaper} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
