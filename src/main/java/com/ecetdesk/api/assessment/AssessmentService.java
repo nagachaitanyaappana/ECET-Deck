@@ -95,6 +95,71 @@ public class AssessmentService {
     }
 
     @Transactional
+    public Map<String,Object> generateQuestions(UUID testId, String instructions) {
+        Map<String,Object> test = test(testId);
+        if (!"DRAFT".equals(test.get("status")))
+            throw conflict("AI questions can only be generated for a draft test.");
+
+        String type = (String)test.get("test_type");
+        Map<String,Integer> blueprint = BLUEPRINTS.get(type);
+        if (blueprint == null) throw bad("Unsupported test type.");
+
+        int added = 0;
+        Map<String,Integer> generatedBySubject = new LinkedHashMap<>();
+        Integer nextOrder = jdbc.queryForObject(
+            "SELECT COALESCE(MAX(question_order),0)+1 FROM test_questions WHERE test_id=?",
+            Integer.class, testId);
+
+        for (var allocation : blueprint.entrySet()) {
+            String subject = allocation.getKey();
+            int target = allocation.getValue();
+            Integer existing = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM test_questions tq
+                JOIN questions q ON q.id=tq.question_id
+                WHERE tq.test_id=? AND q.subject=?
+                """, Integer.class, testId, subject);
+            int missing = target - (existing == null ? 0 : existing);
+            if (missing < 0)
+                throw bad(subject + " already has more questions than the test blueprint allows.");
+
+            List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
+                generator.generate(subject, missing, instructions);
+            for (var question : generated) {
+                UUID questionId = UUID.randomUUID();
+                jdbc.update("""
+                    INSERT INTO questions(id,subject,question_text,explanation,difficulty)
+                    VALUES (?,?,?,?,?)
+                    """, questionId, subject, question.questionText(),
+                    question.explanation(), question.difficulty());
+
+                char label = 'A';
+                for (var option : question.options()) {
+                    jdbc.update("""
+                        INSERT INTO question_options(id,question_id,option_label,option_text,is_correct)
+                        VALUES (?,?,?,?,?)
+                        """, UUID.randomUUID(), questionId, String.valueOf(label++),
+                        option.text(), option.correct());
+                }
+
+                jdbc.update("""
+                    INSERT INTO test_questions(test_id,question_id,question_order,marks)
+                    VALUES (?,?,?,1)
+                    """, testId, questionId, nextOrder++);
+                added++;
+            }
+            generatedBySubject.put(subject, generated.size());
+        }
+
+        return Map.of(
+            "testId", testId,
+            "status", "DRAFT",
+            "questionsAdded", added,
+            "generatedBySubject", generatedBySubject,
+            "message", "Generated questions remain in draft status. Review them before publishing."
+        );
+    }
+
+    @Transactional
     public Map<String,Object> publish(UUID testId) {
         Map<String,Object> test = test(testId);
         if (!"DRAFT".equals(test.get("status"))) throw conflict("Only draft tests can be published.");
