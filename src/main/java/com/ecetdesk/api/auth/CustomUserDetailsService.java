@@ -19,7 +19,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return User.withUsername(account.getEmail())
                 .password(account.getPasswordHash())
                 .roles(account.getRole().name())
-                .disabled(!account.isEnabled())
+                .disabled(!account.isEnabled() || !account.isEmailVerified())
                 .build();
     }
 }
