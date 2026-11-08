@@ -57,21 +57,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7 sm:py-9">
       {/* Top Welcome / Motivation banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg shadow-blue-500/15 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">ECET Preparation Arena</h1>
-        <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-lg shadow-blue-500/15 mb-7">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">ECET Preparation Arena</h1>
+        <p className="text-blue-100 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
           Sharpen your skills across DCME (100 marks), Math (50), Physics (25), and Chemistry (25).
           Write daily mocks, learn from wrong answers, and improve your rank!
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 mb-6 gap-2">
+      <div className="flex border-b border-slate-200 mb-7 gap-2 overflow-x-auto">
         <button
           onClick={() => setTab('available')}
-          className={`pb-3 px-3 text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
             tab === 'available'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -88,7 +88,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         <button
           onClick={() => setTab('results')}
-          className={`pb-3 px-3 text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
             tab === 'results'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -118,7 +118,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
       ) : tab === 'available' ? (
         tests.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500">
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 text-center text-slate-500 shadow-sm">
             <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-2" />
             <h3 className="text-base font-semibold text-slate-700">No tests available right now</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
@@ -126,11 +126,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             {tests.map((t) => (
               <div
                 key={t.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col justify-between min-h-56"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -150,9 +150,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     )}
                   </div>
 
-                  <h3 className="font-bold text-slate-900 text-base">{t.title}</h3>
+                  <h3 className="font-bold text-slate-900 text-lg leading-snug">{t.title}</h3>
 
-                  <div className="flex items-center gap-4 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 mt-4 pt-4 border-t border-slate-100">
                     <div className="flex items-center gap-1.5">
                       <BookOpen className="w-3.5 h-3.5 text-slate-400" />
                       <span>{t.questionCount} Questions</span>
@@ -169,7 +169,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <button
                   onClick={() => handleStart(t.id)}
                   disabled={startingTestId === t.id}
-                  className="mt-5 w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="mt-6 w-full min-h-12 py-3 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {startingTestId === t.id ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
