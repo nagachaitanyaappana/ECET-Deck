@@ -6,7 +6,6 @@ import java.util.UUID;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,8 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 public class PyqController {
     private final PyqService service;
-    private final SupabasePaperStorageService storage;
-    public PyqController(PyqService service, SupabasePaperStorageService storage) { this.service=service; this.storage=storage; }
+    public PyqController(PyqService service) { this.service=service; }
 
     // ADMIN: curate and verify source questions before they enter the student exam pool.
     @PostMapping("/admin/pyq/questions")
@@ -60,26 +58,26 @@ public class PyqController {
         return service.setPaperActive(paperId,request.active());
     }
 
-    @PostMapping(value="/admin/pyq/papers/upload", consumes="multipart/form-data")
+    @PostMapping("/admin/pyq/papers/link")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String,Object> uploadPaper(
-        @RequestParam("file") MultipartFile file,
-        @RequestParam("title") String title,
-        @RequestParam("examYear") Integer examYear,
-        @RequestParam("paperType") String paperType,
-        @RequestParam(value="sourceName", required=false) String sourceName,
-        @RequestParam(value="attribution", required=false) String attribution) {
-        if (title == null || title.isBlank() || title.length() > 180)
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a paper title (up to 180 characters).");
-        if (examYear == null || examYear < 2000 || examYear > 2100)
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a valid exam year.");
-        if (!"QUESTION_PAPER".equals(paperType) && !"ANSWER_KEY".equals(paperType))
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Paper type must be QUESTION_PAPER or ANSWER_KEY.");
-        SupabasePaperStorageService.UploadedPaper uploaded = storage.upload(file,examYear,paperType);
-        return service.createPaper(new PyqService.PaperRequest(title,examYear,"DCME","C23",paperType,
-            uploaded.storagePath(),uploaded.publicUrl(),sourceName,attribution));
+    public Map<String,Object> registerPaperLink(@Valid @RequestBody PaperLinkPayload request) {
+        String fileId = extractGoogleDriveFileId(request.googleDriveUrl());
+        String viewUrl = "https://drive.google.com/file/d/" + fileId + "/view";
+        return service.createPaper(new PyqService.PaperRequest(request.title(),request.examYear(),
+            "DCME","C23",request.paperType(),"google-drive:"+fileId,viewUrl,request.sourceName(),request.attribution()));
     }
 
+    private String extractGoogleDriveFileId(String value) {
+        try {
+            java.net.URI uri = java.net.URI.create(value.trim());
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || !"drive.google.com".equalsIgnoreCase(uri.getHost())) throw new IllegalArgumentException();
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^/file/d/([A-Za-z0-9_-]+)/view/?$").matcher(uri.getPath());
+            if (!matcher.matches()) throw new IllegalArgumentException();
+            return matcher.group(1);
+        } catch (Exception ex) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a valid Google Drive file sharing link.");
+        }
+    }
     @GetMapping("/admin/pyq/attempts")
     public List<Map<String,Object>> adminAttempts() { return service.adminAttempts(); }
 
@@ -144,5 +142,6 @@ public class PyqController {
         @NotBlank @Pattern(regexp="QUESTION_PAPER|ANSWER_KEY") String paperType,
         @NotBlank String storagePath,String publicUrl,String sourceName,String attribution) {}
     public record AnswerPayload(@NotNull UUID optionId) {}
+    public record PaperLinkPayload(@NotBlank @Size(max=180) String title, @NotNull @Min(2000) @Max(2100) Integer examYear, @NotBlank @Pattern(regexp="QUESTION_PAPER|ANSWER_KEY") String paperType, @NotBlank String googleDriveUrl, String sourceName, String attribution) {}
     public record PaperActivePayload(@NotNull Boolean active) {}
 }
