@@ -55,9 +55,9 @@ public class BrevoEmailService {
                     .body(body)
                     .retrieve()
                     .toBodilessEntity();
-            log.info("Transactional email accepted by Brevo for recipient {}", recipient);
+            log.info("Transactional email accepted by Brevo");
         } catch (Exception ex) {
-            log.error("Brevo transactional email request failed for recipient {}", recipient, ex);
+            log.error("Brevo transactional email request failed", ex);
             throw new IllegalStateException("Brevo could not send the email. Check the sender verification, account approval, and API key.", ex);
         }
     }
