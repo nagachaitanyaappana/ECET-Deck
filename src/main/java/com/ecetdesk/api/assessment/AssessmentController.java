@@ -75,8 +75,8 @@ public class AssessmentController {
     }
 
     @GetMapping("/tests")
-    public List<Map<String, Object>> availableTests() {
-        return service.availableTests();
+    public List<Map<String, Object>> availableTests(Authentication authentication) {
+        return service.availableTests(authentication.getName());
     }
 
     @PostMapping("/tests/{testId}/attempts")
