@@ -207,7 +207,7 @@ List and audit imported questions:
 
 `GET /api/v1/admin/pyq/questions?subject=DCME&year=2024&includeUnverified=true`
 
-Register a paper after uploading its PDF to Supabase Storage:
+Register a paper by saving its PDF in Google Drive, setting General access to “Anyone with the link — Viewer”, and submitting its sharing URL in the Admin → PYQ Papers tab:
 
 ```
 POST /api/v1/admin/pyq/papers
@@ -219,8 +219,7 @@ Content-Type: application/json
   "branch": "DCME",
   "curriculum": "C23",
   "paperType": "QUESTION_PAPER",
-  "storagePath": "2024/DCME/question-paper.pdf",
-  "publicUrl": "https://YOUR_PROJECT.supabase.co/storage/v1/object/public/pyq-papers/2024/DCME/question-paper.pdf",
+  "googleDriveUrl": "https://drive.google.com/file/d/GOOGLE_DRIVE_FILE_ID/view",
   "sourceName": "Official source name",
   "attribution": "Source / licence / permission details"
 }
@@ -246,7 +245,7 @@ Use a Supabase Storage bucket named `pyq-papers` (or your chosen bucket name). K
 
 Migration `V6__add_pyq_question_bank_and_exams.sql` is additive and Flyway-managed. It creates separate PYQ tables and indexes; it does not rewrite or delete existing AI assessment data. It is PostgreSQL-compatible and is applied automatically on the next backend startup/deployment. The question bank and attempt records live in the existing Supabase PostgreSQL database; PDF files live in Supabase Storage. No new paid service or extra database is required for this feature.
 
-Before enabling students, upload and verify enough C23 questions to meet the full 200-question blueprint, upload the permitted PDFs to Storage, register their metadata, and test with a STUDENT account. Run the backend and frontend test/build commands before merging this feature branch.
+Before enabling students, upload and verify enough C23 questions to meet the full 200-question blueprint, store the permitted PDFs in Google Drive, set link access to Viewer, and register their links, and test with a STUDENT account. Run the backend and frontend test/build commands before merging this feature branch.
 
 ## Health Check URLs
 
@@ -368,14 +367,8 @@ Each student gets one attempt per test. Daily mocks do not expire; elapsed secon
 - Subject accuracy combines completed AI mock and PYQ attempts. Topic-level recommendations use only topic-tagged PYQ questions and require at least three observed answers.
 - Preparation labels use the last three completed attempts where available. They are guidance, not a prediction or guarantee of an ECET result.
 
-## Admin PYQ PDF uploads
+## Admin PYQ paper library
 
-The Admin Control Center includes a **PYQ Papers** section. Admins can upload a PDF (maximum 20 MB), enter its title/year/document type, and publish or hide it from the student catalogue. The backend sends the file to Supabase Storage using a server-side service-role key; that key must never be exposed to the frontend.
+The Admin Control Center includes a **PYQ Papers** section. Keep PDFs in Google Drive, set each file's General access to **Anyone with the link — Viewer**, then register its title, year, document type, and sharing link. Admins can publish or hide each entry. The backend validates the Google Drive file-sharing URL and stores only its file ID and URL in PostgreSQL; it does not upload or proxy the PDF. Students open the PDF directly from Drive.
 
-Configure these backend environment variables in the local root `.env` and the deployment platform:
-
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (secret; never commit it or add it to a `VITE_*` variable)
-- `SUPABASE_STORAGE_BUCKET` (defaults to `pyq-papers`)
-
-Create the configured Supabase Storage bucket before uploading. The current student catalogue uses public PDF URLs, so the `pyq-papers` bucket must be public for direct student viewing. Anyone who obtains a public file URL can access that file; use a private bucket and signed-URL flow instead if authenticated-only file access is required. Upload only papers you are permitted to distribute.
+No Google Drive API key, OAuth integration, Supabase Storage bucket, or extra backend secret is required. Anyone with a sharing link can view the PDF, so only share papers you are permitted to distribute.
