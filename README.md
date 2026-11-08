@@ -9,7 +9,7 @@ Spring Boot backend for ECET Desk, a private daily ECET practice platform for a 
 - Flyway-managed `app` schema and initial `app.users` table
 - Health endpoint: `GET /api/v1/health`
 
-JWT authentication, role-protected student management, first-admin bootstrap, and the initial assessment database model are now implemented. Test creation, AI question generation, attempt workflows, grading, and result APIs are still planned.
+JWT authentication, public student self-registration, role-protected student management, first-admin bootstrap, and the initial assessment database model are implemented. Test creation, AI question generation, attempt workflows, grading, and result APIs are still planned.
 
 ## Requirements
 - JDK 21 (a newer compatible JDK can also work)
@@ -79,7 +79,22 @@ The first successful application startup runs Flyway migrations and creates the 
 
 ## Authentication API
 
-First-admin bootstrap is controlled only by environment variables; there is no public admin-registration endpoint.
+First-admin bootstrap is controlled only by environment variables; there is no public admin-registration endpoint. Anyone can create a STUDENT account through the public registration endpoint. The request does not accept a role, so public registration can never create an ADMIN account.
+
+Register a student:
+
+```
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "a-strong-password-at-least-10-characters",
+  "displayName": "Student One"
+}
+```
+
+Registration returns `201 Created`. The student can then use the login endpoint below to receive a JWT.
 
 Login:
 
