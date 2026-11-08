@@ -24,6 +24,8 @@ export interface AvailableTest {
   questionCount: number;
   durationMinutes: number;
   totalMarks: number;
+  attemptId?: string | null;
+  attemptStatus?: 'IN_PROGRESS' | 'SUBMITTED' | 'TIMED_OUT' | null;
 }
 
 export interface QuestionOption {
