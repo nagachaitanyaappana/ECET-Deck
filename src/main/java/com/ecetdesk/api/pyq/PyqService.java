@@ -99,7 +99,12 @@ public class PyqService {
 
     @Transactional
     public Map<String,Object> startAttempt(String email) {
-        UUID student = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?) AND role='STUDENT'",UUID.class,email);
+        UUID student;
+        try {
+            student = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?) AND role='STUDENT'",UUID.class,email);
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only student accounts can start the PYQ Challenge.");
+        }
         Integer inProgress=jdbc.queryForObject("SELECT COUNT(*) FROM pyq_attempts WHERE student_id=? AND status='IN_PROGRESS'",Integer.class,student);
         if (inProgress != null && inProgress > 0) throw conflict("Finish or submit your existing PYQ Challenge before starting another.");
         for (var entry: BLUEPRINT.entrySet()) {
@@ -126,16 +131,35 @@ public class PyqService {
                 """,(rs,row)->UUID.fromString(rs.getString(1)),entry.getKey(),entry.getValue()));
         }
         Collections.shuffle(selected);
-        int order=1;
-        for (UUID qid:selected) {
-            jdbc.update("INSERT INTO pyq_attempt_questions(attempt_id,question_id,question_order) VALUES (?,?,?)",attempt,qid,order++);
-            List<UUID> optionIds=jdbc.query("SELECT id FROM pyq_question_options WHERE question_id=? ORDER BY random()",
-                (rs,row)->UUID.fromString(rs.getString(1)),qid);
-            int optionOrder=1;
-            for(UUID optionId:optionIds) jdbc.update(
-                "INSERT INTO pyq_attempt_options(attempt_id,question_id,option_id,option_order) VALUES (?,?,?,?)",
-                attempt,qid,optionId,optionOrder++);
+
+        List<Object[]> questionBatch = new ArrayList<>(selected.size());
+        for (int i = 0; i < selected.size(); i++) {
+            questionBatch.add(new Object[]{attempt, selected.get(i), i + 1});
         }
+        jdbc.batchUpdate("INSERT INTO pyq_attempt_questions(attempt_id,question_id,question_order) VALUES (?,?,?)", questionBatch);
+
+        List<Map<String,Object>> optionRows = jdbc.queryForList("""
+            SELECT id, question_id FROM pyq_question_options
+            WHERE question_id IN (SELECT question_id FROM pyq_attempt_questions WHERE attempt_id=?)
+            """, attempt);
+        Map<UUID, List<UUID>> optionsByQ = new HashMap<>();
+        for (var r : optionRows) {
+            UUID qid = (UUID) r.get("question_id");
+            UUID oid = (UUID) r.get("id");
+            optionsByQ.computeIfAbsent(qid, k -> new ArrayList<>()).add(oid);
+        }
+
+        List<Object[]> optionBatch = new ArrayList<>();
+        for (UUID qid : selected) {
+            List<UUID> oids = optionsByQ.getOrDefault(qid, Collections.emptyList());
+            Collections.shuffle(oids);
+            int optionOrder = 1;
+            for (UUID oid : oids) {
+                optionBatch.add(new Object[]{attempt, qid, oid, optionOrder++});
+            }
+        }
+        jdbc.batchUpdate("INSERT INTO pyq_attempt_options(attempt_id,question_id,option_id,option_order) VALUES (?,?,?,?)", optionBatch);
+
         return getAttempt(attempt,email);
     }
 
@@ -161,16 +185,33 @@ public class PyqService {
             FROM pyq_attempt_questions aq JOIN pyq_questions q ON q.id=aq.question_id
             WHERE aq.attempt_id=? ORDER BY aq.question_order
             """,attemptId);
-        for(var q:questions) {
-            q.put("options",jdbc.queryForList("""
-                SELECT o.id,chr(64+ao.option_order) AS label,o.option_text AS text
-                FROM pyq_attempt_options ao JOIN pyq_question_options o ON o.id=ao.option_id
-                WHERE ao.attempt_id=? AND ao.question_id=? ORDER BY ao.option_order
-                """,attemptId,q.get("id")));
-            List<Map<String,Object>> ans=jdbc.queryForList(
-                "SELECT selected_option_id FROM pyq_student_answers WHERE attempt_id=? AND question_id=?",attemptId,q.get("id"));
-            q.put("selectedOptionId",ans.isEmpty()?null:ans.get(0).get("selected_option_id"));
+
+        List<Map<String,Object>> allOptions = jdbc.queryForList("""
+            SELECT ao.question_id AS "questionId", o.id, chr(64+ao.option_order) AS label, o.option_text AS text
+            FROM pyq_attempt_options ao JOIN pyq_question_options o ON o.id=ao.option_id
+            WHERE ao.attempt_id=? ORDER BY ao.question_id, ao.option_order
+            """, attemptId);
+        Map<Object, List<Map<String,Object>>> optionsByQuestion = new HashMap<>();
+        for (var opt : allOptions) {
+            Object qId = opt.remove("questionId");
+            optionsByQuestion.computeIfAbsent(qId, k -> new ArrayList<>()).add(opt);
         }
+
+        List<Map<String,Object>> allAnswers = jdbc.queryForList("""
+            SELECT question_id AS "questionId", selected_option_id AS "selectedOptionId"
+            FROM pyq_student_answers WHERE attempt_id=?
+            """, attemptId);
+        Map<Object, Object> answersByQuestion = new HashMap<>();
+        for (var ans : allAnswers) {
+            answersByQuestion.put(ans.get("questionId"), ans.get("selectedOptionId"));
+        }
+
+        for (var q : questions) {
+            Object qId = q.get("id");
+            q.put("options", optionsByQuestion.getOrDefault(qId, Collections.emptyList()));
+            q.put("selectedOptionId", answersByQuestion.get(qId));
+        }
+
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("attemptId",attemptId);result.put("status",a.get("status"));
         result.put("startedAt",a.get("started_at"));result.put("durationMinutes",a.get("duration_minutes"));
@@ -210,7 +251,7 @@ public class PyqService {
             """,Integer.class,attemptId);
         int t=total==null?0:total, an=answered==null?0:answered, c=correct==null?0:correct;
         int incorrect=an-c, unanswered=t-an;
-        long elapsed=Duration.between(((java.sql.Timestamp)a.get("started_at")).toInstant(),java.time.Instant.now()).toSeconds();
+        long elapsed=getElapsedSeconds(attemptId);
         String status=elapsed>=(long)((Number)a.get("duration_minutes")).intValue()*60+120?"TIMED_OUT":"SUBMITTED";
         jdbc.update("""
             UPDATE pyq_student_answers sa SET is_correct=o.is_correct
@@ -280,9 +321,15 @@ public class PyqService {
         if(!"IN_PROGRESS".equals(a.get("status"))) throw conflict("This attempt is no longer active.");
     }
     private void ensureWithinTime(Map<String,Object> a) {
-        long seconds=Duration.between(((java.sql.Timestamp)a.get("started_at")).toInstant(),java.time.Instant.now()).toSeconds();
+        long seconds=getElapsedSeconds((UUID) a.get("id"));
         if(seconds>((long)((Number)a.get("duration_minutes")).intValue()+2)*60)
             throw conflict("The 180-minute PYQ Challenge time limit has expired.");
+    }
+    private long getElapsedSeconds(UUID attemptId) {
+        Long elapsed = jdbc.queryForObject(
+            "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at))::BIGINT FROM pyq_attempts WHERE id = ?",
+            Long.class, attemptId);
+        return elapsed == null ? 0L : elapsed;
     }
     private static String trimOrNull(String s){return s==null||s.isBlank()?null:s.trim();}
     private static ResponseStatusException bad(String m){return new ResponseStatusException(HttpStatus.BAD_REQUEST,m);}

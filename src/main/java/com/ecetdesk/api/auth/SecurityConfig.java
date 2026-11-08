@@ -68,7 +68,9 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/", "/db", "/db/**", "/api/v1/health", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/pyq/papers").hasAnyRole("STUDENT", "ADMIN")
                         .requestMatchers("/api/v1/pyq/**").hasRole("STUDENT")
+                        .requestMatchers("/api/v1/my/**").hasRole("STUDENT")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

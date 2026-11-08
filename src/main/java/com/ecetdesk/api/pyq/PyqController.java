@@ -68,15 +68,18 @@ public class PyqController {
     }
 
     private String extractGoogleDriveFileId(String value) {
-        try {
-            java.net.URI uri = java.net.URI.create(value.trim());
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || !"drive.google.com".equalsIgnoreCase(uri.getHost())) throw new IllegalArgumentException();
-            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^/file/d/([A-Za-z0-9_-]+)/view/?$").matcher(uri.getPath());
-            if (!matcher.matches()) throw new IllegalArgumentException();
-            return matcher.group(1);
-        } catch (Exception ex) {
-            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Enter a valid Google Drive file sharing link.");
+        if (value == null || value.isBlank()) {
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Google Drive link is required.");
         }
+        String trimmed = value.trim();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?:/file/d/|[?&]id=)([a-zA-Z0-9_-]{25,})").matcher(trimmed);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        if (trimmed.matches("^[a-zA-Z0-9_-]{25,}$")) {
+            return trimmed;
+        }
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid Google Drive file sharing link or file ID.");
     }
     @GetMapping("/admin/pyq/attempts")
     public List<Map<String,Object>> adminAttempts() { return service.adminAttempts(); }
