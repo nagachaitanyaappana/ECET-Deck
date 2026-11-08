@@ -2,7 +2,7 @@ ALTER TABLE app.users
     ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE app.auth_challenges (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES app.users(id) ON DELETE CASCADE,
     purpose VARCHAR(24) NOT NULL,
     code_hash VARCHAR(100) NOT NULL,
