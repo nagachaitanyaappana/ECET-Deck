@@ -40,7 +40,7 @@ public class OpenRouterQuestionGenerator {
         if (count <= 0) return List.of();
 
         List<GeneratedQuestion> result = new ArrayList<>();
-        int batchSize = 15;
+        int batchSize = Math.min(25, count);
         int neededBatches = (int) Math.ceil((double) count / batchSize);
         int maxAttempts = neededBatches + 2;
         int attempts = 0;

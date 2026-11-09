@@ -33,6 +33,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [aiInstructions, setAiInstructions] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customScheduledDate, setCustomScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -86,6 +87,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     (t) => t.testType === 'DAILY' && t.scheduledDate === todayStr
   );
   const grandTestsCount = availableTests.filter((t) => t.testType === 'GRAND').length;
+
+  useEffect(() => {
+    if (!generatingType) {
+      setElapsedSeconds(0);
+      return;
+    }
+    setElapsedSeconds(0);
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [generatingType]);
+
+  const estTotalSeconds = generatingType === 'DAILY' ? 35 : 85;
+  const estSecondsLeft = Math.max(0, estTotalSeconds - elapsedSeconds);
+  const progressPercent = useMemo(() => {
+    if (!generatingType) return 0;
+    const ratio = elapsedSeconds / estTotalSeconds;
+    if (ratio >= 1) {
+      return Math.min(98, 90 + Math.floor((elapsedSeconds - estTotalSeconds) / 4));
+    }
+    return Math.min(90, Math.max(8, Math.round(ratio * 88) + 8));
+  }, [generatingType, elapsedSeconds, estTotalSeconds]);
+
+  const progressStage = useMemo(() => {
+    if (!generatingType) return '';
+    if (generatingType === 'DAILY') {
+      if (elapsedSeconds < 4) return 'Connecting to AI model & preparing syllabus blueprint...';
+      if (elapsedSeconds < 14) return 'Generating 50 MCQs across DCME, Maths, Physics & Chemistry...';
+      if (elapsedSeconds < 24) return 'Validating 4-option schemas, answer keys & conceptual explanations...';
+      return 'Compiling questions, linking subject allocations & publishing live paper...';
+    } else {
+      if (elapsedSeconds < 6) return 'Connecting to AI model & setting up 200-question ECET blueprint...';
+      if (elapsedSeconds < 30) return 'Generating Core DCME (100 Qs) & Mathematics (50 Qs)...';
+      if (elapsedSeconds < 60) return 'Generating Physics (25 Qs) & Chemistry (25 Qs)...';
+      if (elapsedSeconds < 78) return 'Validating 4 options, formatting formulas & explanations...';
+      return 'Saving question bank, linking allocations & finalizing Grand Test...';
+    }
+  }, [generatingType, elapsedSeconds]);
 
   useEffect(() => {
     loadTabContent();
@@ -754,6 +794,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                   Click a button to generate complete questions with conceptual explanations across DCME, Math, Physics, and Chemistry, and automatically publish them live for students.
                 </p>
 
+                {/* Real-time Generation Progress & Estimated Time Indicator */}
+                {generatingType && (
+                  <div className="mb-6 rounded-2xl border-2 border-blue-400 bg-gradient-to-r from-blue-50 via-indigo-50/70 to-blue-50 p-4 sm:p-5 shadow-md space-y-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0 animate-pulse">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            Generating {generatingType === 'DAILY' ? "Today's Daily Mock (50 Questions)" : 'Full Grand Test (200 Questions)'}
+                          </h4>
+                          <p className="text-xs text-slate-600 font-medium">
+                            AI is generating questions in parallel across DCME, Maths, Physics & Chemistry
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-blue-200 text-xs font-semibold text-slate-700 shadow-2xs">
+                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Elapsed: <span className="text-blue-700 font-bold">{elapsedSeconds}s</span></span>
+                        <span className="text-slate-300">•</span>
+                        <span>Est. Left: <span className="text-indigo-700 font-bold">~{estSecondsLeft}s</span></span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar & Percentage */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <span className="text-slate-700 flex items-center gap-1.5 truncate pr-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping shrink-0 inline-block" />
+                          {progressStage}
+                        </span>
+                        <span className="text-blue-700 font-bold shrink-0">{progressPercent}%</span>
+                      </div>
+                      <div className="h-3 w-full bg-blue-200/60 rounded-full overflow-hidden p-0.5 border border-blue-300/50">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 transition-all duration-700 ease-out shadow-xs"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        Validating 4-option schema, answer keys & verified explanations
+                      </span>
+                      <span className="font-medium text-slate-400 hidden sm:inline">Please keep this window open</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Optional Topic Instructions */}
                 <div className="mb-5 bg-slate-50 border border-slate-200 rounded-xl p-3.5">
                   <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1.5">
@@ -838,7 +930,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                       {generatingType === 'DAILY' ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Generating 50 MCQs & Publishing...
+                          <span>Generating ({elapsedSeconds}s • ~{estSecondsLeft}s left)</span>
                         </>
                       ) : todaysDailyMock ? (
                         <>
@@ -882,7 +974,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                       {generatingType === 'GRAND' ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Generating 200 MCQs & Publishing...
+                          <span>Generating ({elapsedSeconds}s • ~{estSecondsLeft}s left)</span>
                         </>
                       ) : (
                         <>
