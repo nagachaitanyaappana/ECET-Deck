@@ -58,9 +58,11 @@ public class AssessmentService {
 
     @Transactional
     public void deleteTest(UUID testId) {
+        jdbc.update("UPDATE grand_test_requests SET generated_test_id=NULL WHERE generated_test_id=?", testId);
         Integer attempts = jdbc.queryForObject("SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, testId);
         if (attempts != null && attempts > 0) {
-            throw conflict("Cannot delete a test that already has student attempts.");
+            jdbc.update("UPDATE tests SET scheduled_date=NULL, status='ARCHIVED' WHERE id=?", testId);
+            return;
         }
         jdbc.update("DELETE FROM test_questions WHERE test_id=?", testId);
         jdbc.update("DELETE FROM test_subject_allocations WHERE test_id=?", testId);
@@ -132,6 +134,7 @@ public class AssessmentService {
         Map<String, Integer> generatedCounts = new ConcurrentHashMap<>();
 
         ExecutorService pool = Executors.newFixedThreadPool(4);
+        int added = 0;
         try {
             List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
                 .map(entry -> CompletableFuture.runAsync(() -> {
@@ -145,8 +148,14 @@ public class AssessmentService {
                 .toList();
 
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            added = persistGeneratedQuestions(testId, generatedBySubjectList);
+            publish(testId);
         } catch (Exception ex) {
-            try { deleteTest(testId); } catch (Exception ignored) {}
+            try {
+                jdbc.update("DELETE FROM test_questions WHERE test_id=?", testId);
+                jdbc.update("DELETE FROM test_subject_allocations WHERE test_id=?", testId);
+                jdbc.update("DELETE FROM tests WHERE id=?", testId);
+            } catch (Exception ignored) {}
             Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
             if (cause instanceof ResponseStatusException rse) {
                 throw rse;
@@ -155,9 +164,6 @@ public class AssessmentService {
         } finally {
             pool.shutdown();
         }
-
-        int added = persistGeneratedQuestions(testId, generatedBySubjectList);
-        publish(testId);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("id", testId);

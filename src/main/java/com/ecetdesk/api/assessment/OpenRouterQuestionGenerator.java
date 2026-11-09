@@ -25,8 +25,8 @@ public class OpenRouterQuestionGenerator {
         this.mapper = mapper;
         this.settings = settings;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(10));
-        factory.setReadTimeout(Duration.ofSeconds(25));
+        factory.setConnectTimeout(Duration.ofSeconds(15));
+        factory.setReadTimeout(Duration.ofSeconds(60));
         this.client = RestClient.builder().requestFactory(factory)
                 .baseUrl("https://openrouter.ai/api/v1").build();
     }
@@ -40,18 +40,21 @@ public class OpenRouterQuestionGenerator {
         if (count <= 0) return List.of();
 
         List<GeneratedQuestion> result = new ArrayList<>();
+        int batchSize = 15;
+        int neededBatches = (int) Math.ceil((double) count / batchSize);
+        int maxAttempts = neededBatches + 2;
         int attempts = 0;
-        int maxAttempts = Math.min(2, Math.max(1, (count / 8) + 1));
+
         while (result.size() < count && attempts < maxAttempts) {
             attempts++;
-            int batchSize = Math.min(10, count - result.size());
-            List<GeneratedQuestion> batch = generateBatch(subject, batchSize, extraInstructions, config.apiKey(), config.model());
+            int currentBatchSize = Math.min(batchSize, count - result.size());
+            List<GeneratedQuestion> batch = generateBatch(subject, currentBatchSize, extraInstructions, config.apiKey(), config.model());
             if (batch.isEmpty()) continue;
             result.addAll(batch);
         }
         if (result.size() < count) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "OpenRouter could generate only " + result.size() + " of " + count + " required " + subject + " questions.");
+                    "OpenRouter AI generated only " + result.size() + " of " + count + " required " + subject + " questions.");
         }
         return List.copyOf(result.subList(0, count));
     }
