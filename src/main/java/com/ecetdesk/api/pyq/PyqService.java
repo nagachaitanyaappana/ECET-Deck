@@ -105,8 +105,22 @@ public class PyqService {
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only student accounts can start the PYQ Challenge.");
         }
-        Integer inProgress=jdbc.queryForObject("SELECT COUNT(*) FROM pyq_attempts WHERE student_id=? AND status='IN_PROGRESS'",Integer.class,student);
-        if (inProgress != null && inProgress > 0) throw conflict("Finish or submit your existing PYQ Challenge before starting another.");
+        // Auto-close any expired in-progress attempts (> 180 min)
+        jdbc.update("""
+            UPDATE pyq_attempts
+            SET status='TIMED_OUT', submitted_at=CURRENT_TIMESTAMP
+            WHERE student_id=? AND status='IN_PROGRESS'
+              AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - started_at)) >= (duration_minutes * 60)
+            """, student);
+
+        // Resume active attempt if one already exists instead of throwing conflict
+        List<UUID> activeAttempts = jdbc.queryForList(
+            "SELECT id FROM pyq_attempts WHERE student_id=? AND status='IN_PROGRESS' ORDER BY started_at DESC LIMIT 1",
+            UUID.class, student);
+        if (!activeAttempts.isEmpty()) {
+            return getAttempt(activeAttempts.get(0), email);
+        }
+
         for (var entry: BLUEPRINT.entrySet()) {
             Integer available=jdbc.queryForObject("""
                 SELECT COUNT(*) FROM pyq_questions q
@@ -122,13 +136,20 @@ public class PyqService {
         jdbc.update("INSERT INTO pyq_attempts(id,student_id) VALUES (?,?)",attempt,student);
         List<UUID> selected=new ArrayList<>();
         for (var entry: BLUEPRINT.entrySet()) {
+            Integer available=jdbc.queryForObject("""
+                SELECT COUNT(*) FROM pyq_questions q
+                WHERE q.subject=? AND q.curriculum='C23' AND q.verified=TRUE AND q.active=TRUE
+                  AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id)=4
+                  AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id AND o.is_correct=TRUE)=1
+                """,Integer.class,entry.getKey());
+            int limit = Math.min(available != null ? available : 0, entry.getValue());
             selected.addAll(jdbc.query("""
                 SELECT q.id FROM pyq_questions q
                 WHERE q.subject=? AND q.curriculum='C23' AND q.verified=TRUE AND q.active=TRUE
                   AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id)=4
                   AND (SELECT COUNT(*) FROM pyq_question_options o WHERE o.question_id=q.id AND o.is_correct=TRUE)=1
                 ORDER BY random() LIMIT ?
-                """,(rs,row)->UUID.fromString(rs.getString(1)),entry.getKey(),entry.getValue()));
+                """,(rs,row)->UUID.fromString(rs.getString(1)),entry.getKey(),limit));
         }
         Collections.shuffle(selected);
 

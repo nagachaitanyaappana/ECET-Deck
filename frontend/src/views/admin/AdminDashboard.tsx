@@ -33,6 +33,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
+  const [genMode, setGenMode] = useState<'BANK' | 'AI'>('BANK');
   const [aiInstructions, setAiInstructions] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customScheduledDate, setCustomScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -213,10 +214,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
   const handleAutoGenerate = async (type: 'DAILY' | 'GRAND', dateOverride?: string) => {
     setGeneratingType(type);
     setMessage(null);
+    const controller = new AbortController();
+    const timeoutTimer = setTimeout(() => controller.abort(), 60000);
     try {
       const payload: any = {
         testType: type,
-        instructions: aiInstructions.trim() || undefined,
+        instructions: genMode === 'BANK' ? 'BANK' : (aiInstructions.trim() || undefined),
       };
 
       if (type === 'DAILY') {
@@ -229,6 +232,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       const res: any = await apiRequest('/api/v1/admin/tests/auto-generate', {
         method: 'POST',
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
       setMessage({
@@ -238,11 +242,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       setCustomTitle('');
       await loadTabContent();
     } catch (err: any) {
+      const isTimeout = err.name === 'AbortError';
       setMessage({
         type: 'error',
-        text: err.message || 'Automated question generation failed. Check OpenRouter connection.',
+        text: isTimeout
+          ? 'Generation timed out. The server might still be finalizing, please refresh.'
+          : (err.message || 'Automated question generation failed.'),
       });
     } finally {
+      clearTimeout(timeoutTimer);
       setGeneratingType(null);
     }
   };
@@ -800,6 +808,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Question Generation Source Toggle */}
+                <div className="flex flex-wrap items-center gap-4 mb-4 text-xs bg-slate-100/80 p-3 rounded-xl border border-slate-200">
+                  <span className="font-semibold text-slate-700">Question Source:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800">
+                    <input
+                      type="radio"
+                      name="genMode"
+                      value="BANK"
+                      checked={genMode === 'BANK'}
+                      onChange={() => setGenMode('BANK')}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Verified Question Bank (Instant · Recommended)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-800">
+                    <input
+                      type="radio"
+                      name="genMode"
+                      value="AI"
+                      checked={genMode === 'AI'}
+                      onChange={() => setGenMode('AI')}
+                      className="text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>AI Generation (OpenRouter)</span>
+                  </label>
                 </div>
 
                 {/* The Two 1-Click Action Cards */}

@@ -6,8 +6,12 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AssessmentService {
+    private static final Logger log = LoggerFactory.getLogger(AssessmentService.class);
     private static final Map<String, Map<String, Integer>> BLUEPRINTS = Map.of(
         "GRAND", Map.of("DCME",100,"MATHEMATICS",50,"PHYSICS",30,"CHEMISTRY",20),
         "DAILY", Map.of("DCME",25,"MATHEMATICS",13,"PHYSICS",6,"CHEMISTRY",6)
@@ -123,29 +128,42 @@ public class AssessmentService {
         Map<String, List<OpenRouterQuestionGenerator.GeneratedQuestion>> generatedBySubjectList = new ConcurrentHashMap<>();
         Map<String, Integer> generatedCounts = new ConcurrentHashMap<>();
 
-        List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
-            .map(entry -> CompletableFuture.runAsync(() -> {
-                String subject = entry.getKey();
-                int target = entry.getValue();
-                List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
-                    generator.generate(subject, target, r.instructions());
-                generatedBySubjectList.put(subject, generated);
-                generatedCounts.put(subject, generated.size());
-            }))
-            .toList();
+        boolean preferBank = r.instructions() != null && (
+            r.instructions().trim().equalsIgnoreCase("BANK") ||
+            r.instructions().trim().toLowerCase(Locale.ROOT).contains("question bank"));
 
-        try {
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        } catch (Exception ex) {
-            try { deleteTest(testId); } catch (Exception ignored) {}
-            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-            if (cause instanceof ResponseStatusException rse) {
-                throw rse;
+        int added = 0;
+        String sourceNote = "";
+
+        if (!preferBank) {
+            ExecutorService pool = Executors.newFixedThreadPool(4);
+            try {
+                List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
+                    .map(entry -> CompletableFuture.runAsync(() -> {
+                        String subject = entry.getKey();
+                        int target = entry.getValue();
+                        List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
+                            generator.generate(subject, target, r.instructions());
+                        generatedBySubjectList.put(subject, generated);
+                        generatedCounts.put(subject, generated.size());
+                    }, pool))
+                    .toList();
+
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                added = persistGeneratedQuestions(testId, generatedBySubjectList);
+                sourceNote = "via AI";
+            } catch (Exception ex) {
+                log.warn("AI generation encountered error ({}); falling back to verified Question Bank.", ex.getMessage());
+                added = populateFromQuestionBank(testId, type);
+                sourceNote = "from verified Question Bank (AI unavailable / quota reached)";
+            } finally {
+                pool.shutdown();
             }
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed generating test questions: " + cause.getMessage(), cause);
+        } else {
+            added = populateFromQuestionBank(testId, type);
+            sourceNote = "from verified Question Bank";
         }
 
-        int added = persistGeneratedQuestions(testId, generatedBySubjectList);
         publish(testId);
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -159,8 +177,72 @@ public class AssessmentService {
         response.put("totalMarks", count);
         response.put("questionsAdded", added);
         response.put("generatedBySubject", generatedCounts);
-        response.put("message", "Successfully generated and published " + title + " with " + count + " questions!");
+        response.put("message", "Successfully generated and published " + title + " (" + added + " questions " + sourceNote + ")!");
         return response;
+    }
+
+    @Transactional
+    public int populateFromQuestionBank(UUID testId, String type) {
+        Map<String, Integer> blueprint = BLUEPRINTS.get(type);
+        if (blueprint == null) throw bad("Invalid test type.");
+
+        Integer nextOrder = jdbc.queryForObject(
+            "SELECT COALESCE(MAX(question_order),0)+1 FROM test_questions WHERE test_id=?",
+            Integer.class, testId);
+        int currentOrder = nextOrder == null ? 1 : nextOrder;
+        int totalAdded = 0;
+
+        for (var entry : blueprint.entrySet()) {
+            String subject = entry.getKey();
+            int required = entry.getValue();
+
+            // 1. Get existing question IDs from questions table for this subject
+            List<UUID> qIds = jdbc.queryForList("""
+                SELECT q.id FROM questions q
+                WHERE q.subject=?
+                  AND (SELECT COUNT(*) FROM question_options qo WHERE qo.question_id=q.id)=4
+                  AND (SELECT COUNT(*) FROM question_options qo WHERE qo.question_id=q.id AND qo.is_correct)=1
+                ORDER BY random() LIMIT ?
+                """, UUID.class, subject, required);
+
+            List<UUID> selectedQIds = new ArrayList<>(qIds);
+
+            // 2. If questions table has fewer than required, pull from verified pyq_questions
+            if (selectedQIds.size() < required) {
+                int needed = required - selectedQIds.size();
+                List<Map<String, Object>> pyqs = jdbc.queryForList("""
+                    SELECT pq.id, pq.question_text, pq.explanation, pq.difficulty
+                    FROM pyq_questions pq
+                    WHERE pq.subject=? AND pq.curriculum='C23' AND pq.verified=TRUE AND pq.active=TRUE
+                      AND (SELECT COUNT(*) FROM pyq_question_options po WHERE po.question_id=pq.id)=4
+                      AND (SELECT COUNT(*) FROM pyq_question_options po WHERE po.question_id=pq.id AND po.is_correct=TRUE)=1
+                    ORDER BY random() LIMIT ?
+                    """, subject, needed);
+
+                for (var pyq : pyqs) {
+                    UUID pyqId = (UUID) pyq.get("id");
+                    UUID newQId = UUID.randomUUID();
+                    jdbc.update("INSERT INTO questions(id, subject, question_text, explanation, difficulty) VALUES (?,?,?,?,?)",
+                        newQId, subject, pyq.get("question_text"), pyq.get("explanation"), pyq.get("difficulty"));
+
+                    List<Map<String, Object>> pyqOpts = jdbc.queryForList(
+                        "SELECT option_label, option_text, is_correct FROM pyq_question_options WHERE question_id=? ORDER BY option_label",
+                        pyqId);
+                    for (var opt : pyqOpts) {
+                        jdbc.update("INSERT INTO question_options(id, question_id, option_label, option_text, is_correct) VALUES (?,?,?,?,?)",
+                            UUID.randomUUID(), newQId, opt.get("option_label"), opt.get("option_text"), opt.get("is_correct"));
+                    }
+                    selectedQIds.add(newQId);
+                }
+            }
+
+            for (UUID qId : selectedQIds) {
+                jdbc.update("INSERT INTO test_questions(test_id, question_id, question_order, marks) VALUES (?,?,?,1)",
+                    testId, qId, currentOrder++);
+                totalAdded++;
+            }
+        }
+        return totalAdded;
     }
 
     public List<Map<String,Object>> listAllTestsForAdmin() {

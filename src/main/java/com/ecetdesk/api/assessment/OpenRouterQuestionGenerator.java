@@ -5,14 +5,18 @@ import java.time.Duration;
 import com.ecetdesk.api.settings.AdminRuntimeSettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class OpenRouterQuestionGenerator {
+    private static final Logger log = LoggerFactory.getLogger(OpenRouterQuestionGenerator.class);
     private final RestClient client;
     private final ObjectMapper mapper;
     private final AdminRuntimeSettingsService settings;
@@ -21,8 +25,8 @@ public class OpenRouterQuestionGenerator {
         this.mapper = mapper;
         this.settings = settings;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(15));
-        factory.setReadTimeout(Duration.ofSeconds(90));
+        factory.setConnectTimeout(Duration.ofSeconds(10));
+        factory.setReadTimeout(Duration.ofSeconds(25));
         this.client = RestClient.builder().requestFactory(factory)
                 .baseUrl("https://openrouter.ai/api/v1").build();
     }
@@ -37,17 +41,17 @@ public class OpenRouterQuestionGenerator {
 
         List<GeneratedQuestion> result = new ArrayList<>();
         int attempts = 0;
-        int maxAttempts = Math.max(5, (count / 3) + 2);
+        int maxAttempts = Math.min(2, Math.max(1, (count / 8) + 1));
         while (result.size() < count && attempts < maxAttempts) {
             attempts++;
-            int batchSize = Math.min(5, count - result.size());
+            int batchSize = Math.min(10, count - result.size());
             List<GeneratedQuestion> batch = generateBatch(subject, batchSize, extraInstructions, config.apiKey(), config.model());
             if (batch.isEmpty()) continue;
             result.addAll(batch);
         }
         if (result.size() < count) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "OpenRouter could generate only " + result.size() + " of " + count + " required " + subject + " questions. No incomplete test was created.");
+                    "OpenRouter could generate only " + result.size() + " of " + count + " required " + subject + " questions.");
         }
         return List.copyOf(result.subList(0, count));
     }
@@ -68,18 +72,20 @@ public class OpenRouterQuestionGenerator {
         String prompt = """
                 Create exactly %d original, technically accurate ECET diploma entrance MCQs for subject %s.
                 Target Andhra Pradesh ECET diploma-level candidates. Questions must be clear and unambiguous.
-                Return ONLY JSON: {"questions":[{"questionText":"...","explanation":"...","difficulty":"EASY|MEDIUM|HARD",
+                Return ONLY a JSON object: {"questions":[{"questionText":"...","explanation":"...","difficulty":"EASY|MEDIUM|HARD",
                 "options":[{"text":"...","correct":false},{"text":"...","correct":true},{"text":"...","correct":false},{"text":"...","correct":false}]}]}
                 Every question must have exactly four distinct options and exactly one correct option.
                 Do not number questions, use markdown, or repeat questions.
                 Additional focus: %s
                 """.formatted(count, subject, extra == null || extra.isBlank() ? "Follow the standard subject syllabus." : extra);
-        Map<String,Object> body = Map.of(
-                "model", model, "temperature", 0.25,
-                "response_format", Map.of("type", "json_object"),
-                "messages", List.of(
-                        Map.of("role", "system", "content", "You are a careful ECET question-paper setter. Accuracy is more important than creativity."),
-                        Map.of("role", "user", "content", prompt)));
+
+        Map<String,Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("temperature", 0.25);
+        body.put("messages", List.of(
+                Map.of("role", "system", "content", "You are an expert ECET question-paper setter. Return only raw JSON."),
+                Map.of("role", "user", "content", prompt)));
+
         try {
             String raw = client.post().uri("/chat/completions")
                     .header("Authorization", "Bearer " + apiKey)
@@ -113,7 +119,25 @@ public class OpenRouterQuestionGenerator {
                 parsed.add(new GeneratedQuestion(questionText, q.path("explanation").asText(""), difficulty, parsedOptions));
             }
             return parsed;
+        } catch (RestClientResponseException ex) {
+            log.error("OpenRouter API error (HTTP {}): {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            int code = ex.getStatusCode().value();
+            if (code == 401) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "OpenRouter API key is invalid or expired. Please update it in Admin Server Settings.");
+            }
+            if (code == 402 || code == 403) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "OpenRouter error: Your account has $0 balance or model '" + model + "' requires paid credits.");
+            }
+            if (code == 429) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "OpenRouter rate limit reached. Please wait a moment and try again.");
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "OpenRouter API error (HTTP " + code + "): " + ex.getStatusText());
         } catch (Exception ex) {
+            log.warn("Failed generating batch for {}: {}", subject, ex.getMessage());
             return List.of();
         }
     }
