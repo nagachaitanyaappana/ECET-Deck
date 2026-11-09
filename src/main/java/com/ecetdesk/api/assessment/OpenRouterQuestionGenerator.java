@@ -127,6 +127,10 @@ public class OpenRouterQuestionGenerator {
                         "OpenRouter API key is invalid or expired. Please update it in Admin Server Settings.");
             }
             if (code == 402 || code == 403) {
+                if (!"openrouter/free".equalsIgnoreCase(model)) {
+                    log.info("Model {} returned HTTP {}; retrying with openrouter/free", model, code);
+                    return generateBatch(subject, count, extra, apiKey, "openrouter/free");
+                }
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                         "OpenRouter error: Your account has $0 balance or model '" + model + "' requires paid credits.");
             }

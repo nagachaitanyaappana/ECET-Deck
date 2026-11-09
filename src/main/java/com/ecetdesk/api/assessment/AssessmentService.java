@@ -97,9 +97,12 @@ public class AssessmentService {
                 Integer attempts = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, existingId);
                 if (attempts != null && attempts > 0) {
-                    throw conflict("A daily mock for " + scheduledDate + " already exists and has active student attempts. Cannot regenerate.");
+                    // Archive existing daily mock so past student attempts are preserved,
+                    // and clear scheduled_date so today's new mock can be generated.
+                    jdbc.update("UPDATE tests SET scheduled_date=NULL, status='ARCHIVED' WHERE id=?", existingId);
+                } else {
+                    deleteTest(existingId);
                 }
-                deleteTest(existingId);
             }
 
             title = (r.customTitle() != null && !r.customTitle().isBlank())
@@ -128,42 +131,32 @@ public class AssessmentService {
         Map<String, List<OpenRouterQuestionGenerator.GeneratedQuestion>> generatedBySubjectList = new ConcurrentHashMap<>();
         Map<String, Integer> generatedCounts = new ConcurrentHashMap<>();
 
-        boolean preferBank = r.instructions() != null && (
-            r.instructions().trim().equalsIgnoreCase("BANK") ||
-            r.instructions().trim().toLowerCase(Locale.ROOT).contains("question bank"));
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        try {
+            List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
+                .map(entry -> CompletableFuture.runAsync(() -> {
+                    String subject = entry.getKey();
+                    int target = entry.getValue();
+                    List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
+                        generator.generate(subject, target, r.instructions());
+                    generatedBySubjectList.put(subject, generated);
+                    generatedCounts.put(subject, generated.size());
+                }, pool))
+                .toList();
 
-        int added = 0;
-        String sourceNote = "";
-
-        if (!preferBank) {
-            ExecutorService pool = Executors.newFixedThreadPool(4);
-            try {
-                List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
-                    .map(entry -> CompletableFuture.runAsync(() -> {
-                        String subject = entry.getKey();
-                        int target = entry.getValue();
-                        List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
-                            generator.generate(subject, target, r.instructions());
-                        generatedBySubjectList.put(subject, generated);
-                        generatedCounts.put(subject, generated.size());
-                    }, pool))
-                    .toList();
-
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                added = persistGeneratedQuestions(testId, generatedBySubjectList);
-                sourceNote = "via AI";
-            } catch (Exception ex) {
-                log.warn("AI generation encountered error ({}); falling back to verified Question Bank.", ex.getMessage());
-                added = populateFromQuestionBank(testId, type);
-                sourceNote = "from verified Question Bank (AI unavailable / quota reached)";
-            } finally {
-                pool.shutdown();
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        } catch (Exception ex) {
+            try { deleteTest(testId); } catch (Exception ignored) {}
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            if (cause instanceof ResponseStatusException rse) {
+                throw rse;
             }
-        } else {
-            added = populateFromQuestionBank(testId, type);
-            sourceNote = "from verified Question Bank";
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed generating test questions via AI: " + cause.getMessage(), cause);
+        } finally {
+            pool.shutdown();
         }
 
+        int added = persistGeneratedQuestions(testId, generatedBySubjectList);
         publish(testId);
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -177,7 +170,7 @@ public class AssessmentService {
         response.put("totalMarks", count);
         response.put("questionsAdded", added);
         response.put("generatedBySubject", generatedCounts);
-        response.put("message", "Successfully generated and published " + title + " (" + added + " questions " + sourceNote + ")!");
+        response.put("message", "Successfully generated and published " + title + " with " + count + " questions via AI!");
         return response;
     }
 
