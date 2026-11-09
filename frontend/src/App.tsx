@@ -6,6 +6,7 @@ import { StudentDashboard } from './views/student/StudentDashboard';
 import { TestRunner } from './views/student/TestRunner';
 import { ReviewView } from './views/student/ReviewView';
 import { AdminDashboard } from './views/admin/AdminDashboard';
+import { AppUpdateModal } from './components/AppUpdateModal';
 
 type Screen = 'dashboard' | 'test' | 'review';
 
@@ -36,6 +37,7 @@ const MainApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar onGoHome={handleExitToDashboard} />
+      <AppUpdateModal />
 
       <main className="flex-1">
         {screen === 'test' && activeAttemptId && (

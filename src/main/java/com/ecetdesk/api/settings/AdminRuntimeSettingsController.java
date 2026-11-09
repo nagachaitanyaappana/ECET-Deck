@@ -25,7 +25,8 @@ public class AdminRuntimeSettingsController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void update(@Valid @RequestBody UpdateSettingsRequest request, Authentication authentication) {
         settings.update(request.apiKey(), request.clearApiKey(), request.model(),
-                request.brevoApiKey(), request.clearBrevoApiKey(), authentication.getName());
+                request.brevoApiKey(), request.clearBrevoApiKey(), request.latestVersion(),
+                request.apkUrl(), request.releaseNotes(), authentication.getName());
     }
 
     public record UpdateSettingsRequest(
@@ -33,5 +34,8 @@ public class AdminRuntimeSettingsController {
             boolean clearApiKey,
             @Size(max = 120) String model,
             @Size(max = 500) String brevoApiKey,
-            boolean clearBrevoApiKey) {}
+            boolean clearBrevoApiKey,
+            @Size(max = 30) String latestVersion,
+            @Size(max = 500) String apkUrl,
+            @Size(max = 1000) String releaseNotes) {}
 }

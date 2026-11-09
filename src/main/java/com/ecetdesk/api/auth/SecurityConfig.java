@@ -40,7 +40,7 @@ public class SecurityConfig {
             .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(provider).exceptionHandling(ex->ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth->auth
-                .requestMatchers("/error","/","/db","/db/**","/api/v1/health","/actuator/health").permitAll()
+                .requestMatchers("/error","/","/db","/db/**","/api/v1/health","/actuator/health","/api/v1/app/version").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET,"/api/v1/pyq/papers").hasAnyRole("STUDENT","ADMIN")

@@ -66,7 +66,30 @@ public class AdminRuntimeSettingsService {
                 Map.entry("brevoApiKeyConfigured", dashboardBrevoKey || environmentBrevoKey),
                 Map.entry("brevoApiKeySource", dashboardBrevoKey ? "Admin dashboard" : environmentBrevoKey ? "Environment" : "Not configured"),
                 Map.entry("encryptionKeyConfigured", encryptionKey != null),
+                Map.entry("latestVersion", findValue("app.latest-version") != null ? findValue("app.latest-version") : "1.1.0"),
+                Map.entry("apkUrl", findValue("app.apk-url") != null ? findValue("app.apk-url") : "https://github.com/nagachaitanyaappana/ECET-Deck/releases/latest/download/app-debug.apk"),
+                Map.entry("releaseNotes", findValue("app.release-notes") != null ? findValue("app.release-notes") : "• Subject-wise & Topic-wise practice tests\n• Reorganized admin navigation\n• Streamlined submit button on final question"),
                 Map.entry("restartRequired", false)
+        );
+    }
+
+    public Map<String, Object> getAppVersionInfo() {
+        String latestVersion = findValue("app.latest-version");
+        if (latestVersion == null || latestVersion.isBlank()) latestVersion = "1.1.0";
+        String apkUrl = findValue("app.apk-url");
+        if (apkUrl == null || apkUrl.isBlank()) {
+            apkUrl = "https://github.com/nagachaitanyaappana/ECET-Deck/releases/latest/download/app-debug.apk";
+        }
+        String releaseNotes = findValue("app.release-notes");
+        if (releaseNotes == null || releaseNotes.isBlank()) {
+            releaseNotes = "• Subject-wise & Topic-wise practice tests\n• Reorganized admin navigation\n• Streamlined submit button on final question";
+        }
+        return Map.of(
+            "latestVersion", latestVersion,
+            "versionCode", 2,
+            "apkUrl", apkUrl,
+            "releaseNotes", releaseNotes,
+            "minSupportedVersion", "1.0.0"
         );
     }
 
@@ -87,7 +110,8 @@ public class AdminRuntimeSettingsService {
 
     @Transactional
     public void update(String apiKey, boolean clearApiKey, String model,
-            String brevoApiKey, boolean clearBrevoApiKey, String adminEmail) {
+            String brevoApiKey, boolean clearBrevoApiKey, String latestVersion, String apkUrl, String releaseNotes,
+            String adminEmail) {
         if (clearApiKey) {
             jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='openrouter.api-key'");
         } else if (apiKey != null && !apiKey.isBlank()) {
@@ -106,6 +130,15 @@ public class AdminRuntimeSettingsService {
                 throw new IllegalArgumentException("Model identifier contains unsupported characters.");
             }
             save("openrouter.model", normalized, adminEmail);
+        }
+        if (latestVersion != null && !latestVersion.isBlank()) {
+            save("app.latest-version", latestVersion.trim(), adminEmail);
+        }
+        if (apkUrl != null && !apkUrl.isBlank()) {
+            save("app.apk-url", apkUrl.trim(), adminEmail);
+        }
+        if (releaseNotes != null && !releaseNotes.isBlank()) {
+            save("app.release-notes", releaseNotes.trim(), adminEmail);
         }
     }
 

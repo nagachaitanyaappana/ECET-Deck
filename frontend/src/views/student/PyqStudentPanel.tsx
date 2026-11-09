@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../api/client';
-import { BookOpen, Clock3, FileText, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BookOpen, Clock3, FileText, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Send } from 'lucide-react';
 
 type Option = { id: string; label: string; text: string };
 type Question = { id: string; subject: string; topic?: string; questionText: string; questionOrder: number; sourceYear: number; sourcePaper: string; options: Option[]; selectedOptionId?: string | null };
@@ -94,7 +94,21 @@ export const PyqStudentPanel: React.FC = () => {
           <div className="space-y-3">
             {current.options.map(o=><button key={o.id} disabled={busy} onClick={()=>choose(o.id)} className={`w-full text-left p-4 rounded-xl border transition-colors min-h-14 ${current.selectedOptionId===o.id?'border-blue-500 bg-blue-50 text-blue-900':'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}><span className="inline-flex w-7 h-7 rounded-full bg-slate-100 items-center justify-center text-sm font-bold mr-3">{o.label}</span>{o.text}</button>)}
           </div>
-          <div className="flex justify-between mt-7 gap-3"><button disabled={index===0} onClick={()=>setIndex(v=>v-1)} className="px-4 py-3 rounded-xl border border-slate-200 disabled:opacity-40 flex items-center gap-2"><ChevronLeft className="w-4 h-4"/>Previous</button><button disabled={index===attempt.questions.length-1} onClick={()=>setIndex(v=>v+1)} className="px-4 py-3 rounded-xl bg-blue-600 text-white disabled:opacity-40 flex items-center gap-2">Next<ChevronRight className="w-4 h-4"/></button></div>
+          <div className="flex justify-between mt-7 gap-3">
+            <button disabled={index===0} onClick={()=>setIndex(v=>v-1)} className="px-4 py-3 rounded-xl border border-slate-200 disabled:opacity-40 flex items-center gap-2 cursor-pointer font-medium text-slate-700 hover:bg-slate-50">
+              <ChevronLeft className="w-4 h-4"/>Previous
+            </button>
+            {index === attempt.questions.length - 1 ? (
+              <button disabled={busy} onClick={submit} className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-emerald-600/20 disabled:opacity-50">
+                <Send className="w-4 h-4"/>
+                {busy ? 'Submitting...' : 'Submit Examination'}
+              </button>
+            ) : (
+              <button onClick={()=>setIndex(v=>v+1)} className="px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 cursor-pointer font-medium">
+                Next<ChevronRight className="w-4 h-4"/>
+              </button>
+            )}
+          </div>
         </div>
         <aside className="bg-white border border-slate-200 rounded-2xl p-4">
           <h3 className="font-bold text-slate-900 mb-3">Question palette</h3>

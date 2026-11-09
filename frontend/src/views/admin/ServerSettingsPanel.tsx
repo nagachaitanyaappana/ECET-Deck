@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../../api/client';
-import { CheckCircle2, KeyRound, RefreshCw, Save, Server, ShieldCheck, Trash2, AlertTriangle, Mail } from 'lucide-react';
+import { CheckCircle2, KeyRound, RefreshCw, Save, Server, ShieldCheck, Trash2, AlertTriangle, Mail, DownloadCloud } from 'lucide-react';
 
 type RuntimeSettings = {
   provider: string;
@@ -11,13 +11,19 @@ type RuntimeSettings = {
   brevoApiKeyConfigured: boolean;
   brevoApiKeySource: string;
   encryptionKeyConfigured: boolean;
+  latestVersion?: string;
+  apkUrl?: string;
+  releaseNotes?: string;
 };
 
 export const ServerSettingsPanel: React.FC = () => {
   const [settings, setSettings] = useState<RuntimeSettings | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [brevoApiKey, setBrevoApiKey] = useState('');
-  const [model, setModel] = useState('openai/gpt-4o-mini');
+  const [model, setModel] = useState('openrouter/free');
+  const [latestVersion, setLatestVersion] = useState('1.1.0');
+  const [apkUrl, setApkUrl] = useState('');
+  const [releaseNotes, setReleaseNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -29,7 +35,10 @@ export const ServerSettingsPanel: React.FC = () => {
     try {
       const value = await apiRequest<RuntimeSettings>('/api/v1/admin/settings');
       setSettings(value);
-      setModel(value.model);
+      if (value.model) setModel(value.model);
+      if (value.latestVersion) setLatestVersion(value.latestVersion);
+      if (value.apkUrl) setApkUrl(value.apkUrl);
+      if (value.releaseNotes) setReleaseNotes(value.releaseNotes);
     } catch (error: any) {
       setNotice({ type: 'error', text: error.message || 'Could not load server settings.' });
     } finally {
@@ -48,12 +57,15 @@ export const ServerSettingsPanel: React.FC = () => {
         method: 'PUT',
         body: JSON.stringify({
           apiKey: apiKey.trim() || null, clearApiKey: false, model: model.trim(),
-          brevoApiKey: brevoApiKey.trim() || null, clearBrevoApiKey: false
+          brevoApiKey: brevoApiKey.trim() || null, clearBrevoApiKey: false,
+          latestVersion: latestVersion.trim() || null,
+          apkUrl: apkUrl.trim() || null,
+          releaseNotes: releaseNotes.trim() || null
         })
       });
       setApiKey('');
       setBrevoApiKey('');
-      setNotice({ type: 'success', text: 'Settings saved securely. New AI and transactional email requests will use these values immediately.' });
+      setNotice({ type: 'success', text: 'Settings saved securely. New AI models, email keys, and app update versions are now live.' });
       await load();
     } catch (error: any) {
       setNotice({ type: 'error', text: error.message || 'Could not save settings.' });
@@ -149,6 +161,48 @@ export const ServerSettingsPanel: React.FC = () => {
               <button type="button" onClick={() => void clearOverride('brevo')} disabled={clearingBrevo || !settings?.brevoApiKeyConfigured || settings.brevoApiKeySource !== 'Admin dashboard'} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-700 text-xs font-bold hover:bg-red-50 disabled:opacity-40">
                 <Trash2 className="w-4 h-4" />{clearingBrevo ? 'Removing…' : 'Remove Brevo dashboard key'}
               </button>
+            </div>
+
+            {/* In-App Updater & Android Release Manager */}
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/20 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <DownloadCloud className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-900">Android In-App Updater & Releases</h3>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Latest Version Name</label>
+                  <input
+                    type="text"
+                    value={latestVersion}
+                    onChange={(e) => setLatestVersion(e.target.value)}
+                    placeholder="1.1.0"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Students with an older version will see the Update modal.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">APK Download URL</label>
+                  <input
+                    type="url"
+                    value={apkUrl}
+                    onChange={(e) => setApkUrl(e.target.value)}
+                    placeholder="https://.../app-debug.apk"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Direct link to your GitHub release or host URL.</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Release Notes (displayed to students)</label>
+                <textarea
+                  rows={3}
+                  value={releaseNotes}
+                  onChange={(e) => setReleaseNotes(e.target.value)}
+                  placeholder="• Features added in this update..."
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end pt-2 border-t border-slate-100">

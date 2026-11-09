@@ -30,6 +30,14 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt }) => {
   const [tab, setTab] = useState<'tests' | 'analytics' | 'leaderboard' | 'requests' | 'feedbacks' | 'pyq' | 'papers' | 'questions' | 'settings'>('tests');
+  const [activeArea, setActiveArea] = useState<'assessments' | 'pyq' | 'students' | 'system'>('assessments');
+
+  useEffect(() => {
+    if (tab === 'tests' || tab === 'requests') setActiveArea('assessments');
+    else if (tab === 'questions' || tab === 'papers' || tab === 'pyq') setActiveArea('pyq');
+    else if (tab === 'analytics' || tab === 'leaderboard' || tab === 'feedbacks') setActiveArea('students');
+    else if (tab === 'settings') setActiveArea('system');
+  }, [tab]);
 
   // One-click AI Generation state
   const [generatingType, setGeneratingType] = useState<'DAILY' | 'GRAND' | null>(null);
@@ -404,109 +412,197 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="dashboard-tabs">
+      {/* Classified Primary Areas */}
+      <div className="bg-slate-100/90 p-1.5 rounded-2xl flex flex-wrap sm:flex-nowrap gap-1.5 border border-slate-200/80 mb-3 shadow-2xs">
         <button
-          onClick={() => setTab('tests')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
-            tab === 'tests'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+          onClick={() => { setActiveArea('assessments'); setTab('tests'); }}
+          className={`flex-1 min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeArea === 'assessments'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          Test Papers
-        </button>
-
-        <button
-          onClick={() => setTab('analytics')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
-            tab === 'analytics'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Student Submissions
-        </button>
-
-        <button
-          onClick={() => setTab('leaderboard')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
-            tab === 'leaderboard'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Trophy className="w-4 h-4" />
-          Leaderboard
-        </button>
-
-        <button
-          onClick={() => setTab('requests')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
-            tab === 'requests'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-500" />
-          Grand Test Requests
+          <span>Assessments Area</span>
           {pendingRequestsCount > 0 && (
-            <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
               {pendingRequestsCount}
             </span>
           )}
         </button>
 
         <button
-          onClick={() => setTab('papers')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'papers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-        >
-          <UploadCloud className="w-4 h-4" />
-          PYQ Papers
-        </button>
-
-        <button
-          onClick={() => setTab('questions')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'questions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-        >
-          <Database className="w-4 h-4" />
-          PYQ Bank
-        </button>
-
-        <button
-          onClick={() => setTab('pyq')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-        >
-          <BookOpen className="w-4 h-4" />
-          PYQ Monitoring
-        </button>
-
-        <button
-          onClick={() => setTab('settings')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'settings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
-        >
-          <Server className="w-4 h-4" />
-          Server Settings
-        </button>
-
-        <button
-          onClick={() => setTab('feedbacks')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
-            tab === 'feedbacks'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+          onClick={() => { setActiveArea('pyq'); setTab('questions'); }}
+          className={`flex-1 min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeArea === 'pyq'
+              ? 'bg-white text-indigo-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
           }`}
         >
-          <MessageSquare className="w-4 h-4 text-indigo-500" />
-          Student Feedback
+          <Database className="w-4 h-4" />
+          <span>PYQ Area</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveArea('students'); setTab('analytics'); }}
+          className={`flex-1 min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeArea === 'students'
+              ? 'bg-white text-emerald-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Student Area</span>
           {openFeedbacksCount > 0 && (
-            <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-indigo-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
               {openFeedbacksCount}
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => { setActiveArea('system'); setTab('settings'); }}
+          className={`flex-1 min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeArea === 'system'
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Server className="w-4 h-4" />
+          <span>System Settings</span>
+        </button>
+      </div>
+
+      {/* Sub-Tabs within the Selected Area */}
+      <div className="dashboard-tabs mb-6">
+        {activeArea === 'assessments' && (
+          <>
+            <button
+              onClick={() => setTab('tests')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'tests'
+                  ? 'border-blue-600 text-blue-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              Test Papers & AI Generator
+            </button>
+            <button
+              onClick={() => setTab('requests')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'requests'
+                  ? 'border-blue-600 text-blue-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Zap className="w-4 h-4 text-amber-500" />
+              Grand Test Requests
+              {pendingRequestsCount > 0 && (
+                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">
+                  {pendingRequestsCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
+
+        {activeArea === 'pyq' && (
+          <>
+            <button
+              onClick={() => setTab('questions')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'questions'
+                  ? 'border-indigo-600 text-indigo-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              PYQ Question Bank & Blueprint
+            </button>
+            <button
+              onClick={() => setTab('papers')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'papers'
+                  ? 'border-indigo-600 text-indigo-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <UploadCloud className="w-4 h-4" />
+              Published PDF Papers
+            </button>
+            <button
+              onClick={() => setTab('pyq')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'pyq'
+                  ? 'border-indigo-600 text-indigo-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              PYQ Exam Monitoring
+            </button>
+          </>
+        )}
+
+        {activeArea === 'students' && (
+          <>
+            <button
+              onClick={() => setTab('analytics')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'analytics'
+                  ? 'border-emerald-600 text-emerald-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Student Submissions & Analytics
+            </button>
+            <button
+              onClick={() => setTab('leaderboard')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'leaderboard'
+                  ? 'border-emerald-600 text-emerald-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Trophy className="w-4 h-4 text-amber-500" />
+              Leaderboard
+            </button>
+            <button
+              onClick={() => setTab('feedbacks')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'feedbacks'
+                  ? 'border-emerald-600 text-emerald-600 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 text-indigo-500" />
+              Student Feedback & Notes
+              {openFeedbacksCount > 0 && (
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold">
+                  {openFeedbacksCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
+
+        {activeArea === 'system' && (
+          <>
+            <button
+              onClick={() => setTab('settings')}
+              className={`pb-3 px-3.5 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+                tab === 'settings'
+                  ? 'border-slate-800 text-slate-800 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Server className="w-4 h-4 text-blue-600" />
+              OpenRouter & Email Server Settings
+            </button>
+          </>
+        )}
       </div>
 
       {message && (

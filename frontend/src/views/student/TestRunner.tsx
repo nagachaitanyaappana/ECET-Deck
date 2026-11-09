@@ -162,10 +162,11 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
 
           <button
             onClick={() => setShowConfirmModal(true)}
-            className="py-1.5 px-3.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="py-1.5 px-3 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Submit Test"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Submit Test</span>
+            <span className="hidden sm:inline">Submit Test</span>
           </button>
         </div>
       </header>
@@ -256,16 +257,27 @@ export const TestRunner: React.FC<TestRunnerProps> = ({ attemptId, onSubmitted, 
                 {savingAnswer ? 'Saving choice...' : 'Auto-saved'}
               </div>
 
-              <button
-                disabled={currentIndex === filteredQuestions.length - 1}
-                onClick={() =>
-                  setCurrentIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1))
-                }
-                className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold disabled:opacity-30 flex items-center gap-1 cursor-pointer"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              {currentIndex === filteredQuestions.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(true)}
+                  className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold shadow-sm shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Review & Submit</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1))
+                  }
+                  className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
