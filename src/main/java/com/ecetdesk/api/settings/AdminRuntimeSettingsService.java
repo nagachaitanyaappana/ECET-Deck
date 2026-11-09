@@ -1,8 +1,16 @@
 package com.ecetdesk.api.settings;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +25,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AdminRuntimeSettingsService {
     private static final String DEFAULT_MODEL = "openrouter/free";
+    private static final String GITHUB_REPO = "nagachaitanyaappana/ECET-Deck";
+    private static final String DEFAULT_APK_URL = "https://github.com/nagachaitanyaappana/ECET-Deck/releases/latest/download/app-debug.apk";
+    private static final String DEFAULT_VERSION = "1.1.0";
+    private static final String DEFAULT_NOTES = "• Performance and UI improvements";
+
     private final JdbcTemplate jdbc;
     private final String environmentApiKey;
     private final String environmentBrevoApiKey;
     private final String environmentModel;
     private final SecretKeySpec encryptionKey;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(4))
+            .build();
+
+    private record CachedRelease(String version, String apkUrl, String notes, Instant fetchedAt) {}
+    private volatile CachedRelease cachedRelease = null;
 
     public AdminRuntimeSettingsService(JdbcTemplate jdbc,
             @Value("${app.ai.openrouter.api-key:}") String environmentApiKey,
@@ -49,6 +69,51 @@ public class AdminRuntimeSettingsService {
     public record RuntimeConfig(String apiKey, String model) {}
     public record BrevoRuntimeConfig(String apiKey) {}
 
+    private CachedRelease getOrFetchGitHubRelease() {
+        CachedRelease current = cachedRelease;
+        if (current != null && Duration.between(current.fetchedAt(), Instant.now()).toMinutes() < 15) {
+            return current;
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest"))
+                    .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", "ECET-Deck-Backend")
+                    .timeout(Duration.ofSeconds(4))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                String tagName = root.path("tag_name").asText("");
+                String version = tagName.replaceAll("^[vV]", "").trim();
+                String body = root.path("body").asText("").trim();
+                String apkUrl = DEFAULT_APK_URL;
+
+                JsonNode assets = root.path("assets");
+                if (assets.isArray()) {
+                    for (JsonNode asset : assets) {
+                        String name = asset.path("name").asText("");
+                        if (name.endsWith(".apk")) {
+                            apkUrl = asset.path("browser_download_url").asText(DEFAULT_APK_URL);
+                            break;
+                        }
+                    }
+                }
+
+                if (!version.isBlank()) {
+                    CachedRelease fresh = new CachedRelease(version, apkUrl, body.isBlank() ? DEFAULT_NOTES : body, Instant.now());
+                    cachedRelease = fresh;
+                    return fresh;
+                }
+            }
+        } catch (Exception ex) {
+            // Gracefully ignore network timeout or GitHub downtime and use fallback
+        }
+        return current != null ? current : new CachedRelease(DEFAULT_VERSION, DEFAULT_APK_URL, DEFAULT_NOTES, Instant.now());
+    }
+
     public Map<String, Object> getSettings() {
         String encrypted = findValue("openrouter.api-key");
         String model = findValue("openrouter.model");
@@ -57,6 +122,16 @@ public class AdminRuntimeSettingsService {
         boolean environmentKey = !environmentApiKey.isBlank();
         boolean dashboardBrevoKey = encryptedBrevo != null && !encryptedBrevo.isBlank();
         boolean environmentBrevoKey = !environmentBrevoApiKey.isBlank();
+
+        CachedRelease gh = getOrFetchGitHubRelease();
+        String manualVersion = findValue("app.latest-version");
+        String manualApk = findValue("app.apk-url");
+        String manualNotes = findValue("app.release-notes");
+
+        boolean hasManualVersion = manualVersion != null && !manualVersion.isBlank();
+        boolean hasManualApk = manualApk != null && !manualApk.isBlank();
+        boolean hasManualNotes = manualNotes != null && !manualNotes.isBlank();
+
         return Map.ofEntries(
                 Map.entry("provider", "OpenRouter"),
                 Map.entry("apiKeyConfigured", dashboardKey || environmentKey),
@@ -66,24 +141,32 @@ public class AdminRuntimeSettingsService {
                 Map.entry("brevoApiKeyConfigured", dashboardBrevoKey || environmentBrevoKey),
                 Map.entry("brevoApiKeySource", dashboardBrevoKey ? "Admin dashboard" : environmentBrevoKey ? "Environment" : "Not configured"),
                 Map.entry("encryptionKeyConfigured", encryptionKey != null),
-                Map.entry("latestVersion", findValue("app.latest-version") != null ? findValue("app.latest-version") : "1.1.0"),
-                Map.entry("apkUrl", findValue("app.apk-url") != null ? findValue("app.apk-url") : "https://github.com/nagachaitanyaappana/ECET-Deck/releases/latest/download/app-debug.apk"),
-                Map.entry("releaseNotes", findValue("app.release-notes") != null ? findValue("app.release-notes") : "• Subject-wise & Topic-wise practice tests\n• Reorganized admin navigation\n• Streamlined submit button on final question"),
+                Map.entry("latestVersion", hasManualVersion ? manualVersion.trim() : gh.version()),
+                Map.entry("versionSource", hasManualVersion ? "Manual Override" : "GitHub Releases (Automatic)"),
+                Map.entry("apkUrl", hasManualApk ? manualApk.trim() : gh.apkUrl()),
+                Map.entry("apkUrlSource", hasManualApk ? "Manual Override" : "GitHub Releases (Automatic)"),
+                Map.entry("releaseNotes", hasManualNotes ? manualNotes.trim() : gh.notes()),
                 Map.entry("restartRequired", false)
         );
     }
 
     public Map<String, Object> getAppVersionInfo() {
-        String latestVersion = findValue("app.latest-version");
-        if (latestVersion == null || latestVersion.isBlank()) latestVersion = "1.1.0";
-        String apkUrl = findValue("app.apk-url");
-        if (apkUrl == null || apkUrl.isBlank()) {
-            apkUrl = "https://github.com/nagachaitanyaappana/ECET-Deck/releases/latest/download/app-debug.apk";
-        }
-        String releaseNotes = findValue("app.release-notes");
-        if (releaseNotes == null || releaseNotes.isBlank()) {
-            releaseNotes = "• Subject-wise & Topic-wise practice tests\n• Reorganized admin navigation\n• Streamlined submit button on final question";
-        }
+        CachedRelease gh = getOrFetchGitHubRelease();
+        String manualVersion = findValue("app.latest-version");
+        String latestVersion = (manualVersion != null && !manualVersion.isBlank())
+                ? manualVersion.trim()
+                : gh.version();
+
+        String manualApkUrl = findValue("app.apk-url");
+        String apkUrl = (manualApkUrl != null && !manualApkUrl.isBlank())
+                ? manualApkUrl.trim()
+                : gh.apkUrl();
+
+        String manualNotes = findValue("app.release-notes");
+        String releaseNotes = (manualNotes != null && !manualNotes.isBlank())
+                ? manualNotes.trim()
+                : gh.notes();
+
         return Map.of(
             "latestVersion", latestVersion,
             "versionCode", 2,
@@ -131,14 +214,26 @@ public class AdminRuntimeSettingsService {
             }
             save("openrouter.model", normalized, adminEmail);
         }
-        if (latestVersion != null && !latestVersion.isBlank()) {
-            save("app.latest-version", latestVersion.trim(), adminEmail);
+        if (latestVersion != null) {
+            if (latestVersion.isBlank()) {
+                jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='app.latest-version'");
+            } else {
+                save("app.latest-version", latestVersion.trim(), adminEmail);
+            }
         }
-        if (apkUrl != null && !apkUrl.isBlank()) {
-            save("app.apk-url", apkUrl.trim(), adminEmail);
+        if (apkUrl != null) {
+            if (apkUrl.isBlank()) {
+                jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='app.apk-url'");
+            } else {
+                save("app.apk-url", apkUrl.trim(), adminEmail);
+            }
         }
-        if (releaseNotes != null && !releaseNotes.isBlank()) {
-            save("app.release-notes", releaseNotes.trim(), adminEmail);
+        if (releaseNotes != null) {
+            if (releaseNotes.isBlank()) {
+                jdbc.update("DELETE FROM app.admin_runtime_settings WHERE setting_key='app.release-notes'");
+            } else {
+                save("app.release-notes", releaseNotes.trim(), adminEmail);
+            }
         }
     }
 

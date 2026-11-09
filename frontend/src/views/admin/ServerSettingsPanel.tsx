@@ -12,7 +12,9 @@ type RuntimeSettings = {
   brevoApiKeySource: string;
   encryptionKeyConfigured: boolean;
   latestVersion?: string;
+  versionSource?: string;
   apkUrl?: string;
+  apkUrlSource?: string;
   releaseNotes?: string;
 };
 
@@ -165,9 +167,14 @@ export const ServerSettingsPanel: React.FC = () => {
 
             {/* In-App Updater & Android Release Manager */}
             <div className="rounded-2xl border border-blue-200 bg-blue-50/20 p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <DownloadCloud className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900">Android In-App Updater & Releases</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DownloadCloud className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">Android In-App Updater & Releases</h3>
+                </div>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  {settings?.versionSource || 'GitHub Releases (Automatic)'}
+                </span>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
@@ -179,7 +186,7 @@ export const ServerSettingsPanel: React.FC = () => {
                     placeholder="1.1.0"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">Students with an older version will see the Update modal.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Leave blank to auto-sync latest version from GitHub Releases.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">APK Download URL</label>
@@ -190,7 +197,7 @@ export const ServerSettingsPanel: React.FC = () => {
                     placeholder="https://.../app-debug.apk"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">Direct link to your GitHub release or host URL.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Leave blank to use the permanent GitHub latest APK URL.</p>
                 </div>
               </div>
               <div>
