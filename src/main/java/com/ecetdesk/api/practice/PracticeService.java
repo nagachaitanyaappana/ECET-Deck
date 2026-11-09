@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.sql.Array;
 import java.util.*;
 
 @Service
@@ -18,60 +17,303 @@ public class PracticeService {
         this.jdbc = jdbc;
     }
 
-    public record TopicInfo(String name, int questionCount) {}
-    public record SubjectCatalog(String subject, String displayName, int totalQuestions, List<TopicInfo> topics) {}
+    public record ConceptInfo(String name, int questionCount) {}
+
+    public record SubjectCatalog(
+        String subject,
+        String displayName,
+        String stream,
+        String code,
+        int totalQuestions,
+        List<ConceptInfo> concepts,
+        List<ConceptInfo> topics // alias for backward-compatibility
+    ) {}
+
+    public record SubjectDefinition(
+        String id,
+        String displayName,
+        String code,
+        String stream,
+        List<String> conceptNames,
+        List<String> aliases
+    ) {}
+
+    public static final List<SubjectDefinition> C23_SUBJECTS = List.of(
+        new SubjectDefinition(
+            "OPERATING_SYSTEMS", "Operating Systems", "CM-303", "DCME",
+            List.of(
+                "Introduction to Operating System & Architecture",
+                "Process Management & CPU Scheduling",
+                "Synchronization & Deadlocks",
+                "Memory Management & Virtual Memory",
+                "Disk Scheduling & File Management"
+            ),
+            List.of("Operating Systems", "Operating System", "OS")
+        ),
+        new SubjectDefinition(
+            "DBMS", "Database Management Systems", "CM-305", "DCME",
+            List.of(
+                "Concepts of DBMS, RDBMS & ER Modeling",
+                "Concepts of SQL & Querying",
+                "Basics of PL/SQL",
+                "Advanced PL/SQL (Procedures, Functions & Triggers)",
+                "Concepts of NoSQL & MongoDB"
+            ),
+            List.of("Database Management Systems", "DBMS", "Database")
+        ),
+        new SubjectDefinition(
+            "DATA_STRUCTURES", "Data Structures through C", "CM-304", "DCME",
+            List.of(
+                "Introduction to Data Structures & Arrays",
+                "Linked Storage Representation & Linked Lists",
+                "Linear Data Structures - Stacks & Applications",
+                "Linear Data Structures - Queues & Deques",
+                "Non-Linear Data Structures - Trees & Traversals"
+            ),
+            List.of("Data Structures", "Data Structures through C", "DS")
+        ),
+        new SubjectDefinition(
+            "JAVA_PROGRAMMING", "OOP through Java", "CM-404", "DCME",
+            List.of(
+                "OOP Concepts, Basics of Java & Overloading",
+                "Inheritance, Method Overriding, Interfaces & Packages",
+                "I/O Streams, File Handling & Collections Framework",
+                "Exception Handling & Multi-Threaded Programming",
+                "Applets, AWT & Event Handling"
+            ),
+            List.of("Java & OOPs", "Java Programming", "OOP through Java", "Java")
+        ),
+        new SubjectDefinition(
+            "COMPUTER_NETWORKS", "Computer Networks & Cyber Security", "CM-405", "DCME",
+            List.of(
+                "Introduction to Networks & Reference Models",
+                "Network Addressing, Subnetting & Protocols",
+                "Introduction to Cyber Security & Threats",
+                "Cryptography & Encryption Techniques",
+                "System Security, Firewalls & Network Defense"
+            ),
+            List.of("Computer Networks", "Computer Networks & Cyber Security", "Networks")
+        ),
+        new SubjectDefinition(
+            "COMPUTER_ORGANIZATION", "Computer Organization & Microprocessors", "CM-403", "DCME",
+            List.of(
+                "CPU Organization & Instruction Formats",
+                "Information Representation & Arithmetic Operations",
+                "Memory Organization & Cache Architecture",
+                "I/O Organization & Direct Memory Access (DMA)",
+                "8086 Microprocessor Architecture & Assembly"
+            ),
+            List.of("Computer Organization & Architecture", "Microprocessors & Microcontrollers", "Computer Organization and Microprocessors", "CO")
+        ),
+        new SubjectDefinition(
+            "DIGITAL_ELECTRONICS", "Digital Electronics", "CM-302", "DCME",
+            List.of(
+                "Number Systems & Binary Codes",
+                "Logic Gates, Boolean Algebra & Basic Combinational Circuits",
+                "Flip-Flops & Latches",
+                "Counters and Registers",
+                "Additional Combinational Circuits"
+            ),
+            List.of("Digital Electronics", "DE")
+        ),
+        new SubjectDefinition(
+            "SOFTWARE_ENGINEERING", "Software Engineering", "CM-401", "DCME",
+            List.of(
+                "Basics of Software Engineering & Life Cycle Models",
+                "Software Project Management & Metrics",
+                "Requirement Analysis & SRS Specifications",
+                "Software Design, Modularization & Coding Standards",
+                "Software Testing, Debugging, Quality & Maintenance"
+            ),
+            List.of("Software Engineering & Web", "Software Engineering", "SE")
+        ),
+        new SubjectDefinition(
+            "WEB_TECHNOLOGIES", "Web Technologies", "CM-402", "DCME",
+            List.of(
+                "Principles of Web Designing & HTML Fundamentals",
+                "HTML5 Elements & CSS Styling",
+                "XML & Client-Side Scripting with JavaScript",
+                "AJAX & jQuery",
+                "Web Servers & Server-Side Scripting using PHP"
+            ),
+            List.of("Web Technologies", "Web Designing", "WT")
+        ),
+        new SubjectDefinition(
+            "PYTHON_PROGRAMMING", "Python Programming", "CM-505", "DCME",
+            List.of(
+                "Introduction to Python Programming & Syntax",
+                "Control Flow, Conditionals & Loops",
+                "Functions, Modules & Arrays",
+                "Built-in Data Structures (Lists, Tuples, Sets, Dictionaries)",
+                "OOP in Python, File Handling & Exception Handling"
+            ),
+            List.of("Python Programming", "Python")
+        ),
+        new SubjectDefinition(
+            "ANDROID_PROGRAMMING", "Android Programming", "CM-503", "DCME",
+            List.of(
+                "Android Basics, Architecture & Anatomy",
+                "Components, Activity Life Cycle & Intents",
+                "Android User Interface & Layouts",
+                "Android Advanced Concepts (Services, Broadcasts, Notifications)",
+                "Database Connectivity with SQLite"
+            ),
+            List.of("Android Programming", "Android")
+        ),
+        new SubjectDefinition(
+            "IOT", "Internet of Things", "CM-504", "DCME",
+            List.of(
+                "Introduction to IoT Architecture & Elements",
+                "IoT Data Protocols (MQTT, CoAP, XMPP, AMQP)",
+                "Communication Technologies (Zigbee, BLE, NFC, IEEE 802.15.4)",
+                "Wireless Sensor Networks & Actuators",
+                "Role of IoT in Automation & Smart Applications"
+            ),
+            List.of("Internet of Things", "IoT")
+        ),
+        new SubjectDefinition(
+            "CLOUD_AND_BIG_DATA", "Big Data & Cloud Computing", "CM-502", "DCME",
+            List.of(
+                "Overview of Data Mining & Knowledge Discovery",
+                "Overview of Data Warehousing & OLAP",
+                "Introduction to Big Data & Hadoop Ecosystem",
+                "Big Data Analytics & Processing Frameworks",
+                "Cloud Computing Concepts, Service & Deployment Models"
+            ),
+            List.of("Big Data & Cloud Computing", "Cloud Computing", "Big Data")
+        ),
+        new SubjectDefinition(
+            "C_PROGRAMMING", "Programming in C", "CM-106", "DCME",
+            List.of(
+                "Introduction to C Language & Data Types",
+                "I/O Statements, Operators & Expressions",
+                "Decision Making & Iterative Control Loops",
+                "Arrays, Strings, Structures & Unions",
+                "User-Defined Functions, Pointers & File Handling"
+            ),
+            List.of("C Programming", "Programming in C", "C")
+        ),
+        new SubjectDefinition(
+            "MATHEMATICS", "Engineering Mathematics", "CM-102/301", "GENERAL",
+            List.of(
+                "Matrices & Determinants",
+                "Trigonometry",
+                "Analytical Geometry",
+                "Differential Calculus",
+                "Integral Calculus & Differential Equations",
+                "Laplace Transforms & Vector Algebra"
+            ),
+            List.of("MATHEMATICS", "Mathematics", "Maths")
+        ),
+        new SubjectDefinition(
+            "PHYSICS", "Engineering Physics", "CM-103", "GENERAL",
+            List.of(
+                "Units, Dimensions & Vectors",
+                "Kinematics, Friction & Dynamics",
+                "Work, Power & Energy",
+                "Simple Harmonic Motion & Sound",
+                "Heat & Thermodynamics",
+                "Modern Physics & Optics"
+            ),
+            List.of("PHYSICS", "Physics")
+        ),
+        new SubjectDefinition(
+            "CHEMISTRY", "Engineering Chemistry", "CM-104", "GENERAL",
+            List.of(
+                "Atomic Structure & Chemical Bonding",
+                "Solutions, Acids & Bases",
+                "Electrochemistry & Corrosion",
+                "Water Technology, Polymers & Environmental Chemistry"
+            ),
+            List.of("CHEMISTRY", "Chemistry")
+        )
+    );
 
     public List<SubjectCatalog> getTopicsCatalog() {
-        // Query distinct subjects and topics from pyq_questions
+        // Query live counts grouped by topic and concept from pyq_questions
         List<Map<String, Object>> rows = jdbc.queryForList("""
-            SELECT subject, COALESCE(NULLIF(TRIM(topic), ''), 'General Practice') AS topic, COUNT(*) AS count
+            SELECT subject,
+                   COALESCE(NULLIF(TRIM(topic), ''), 'General') AS topic,
+                   COALESCE(NULLIF(TRIM(concept), ''), '') AS concept,
+                   COUNT(*) AS count
             FROM pyq_questions
             WHERE active = TRUE AND verified = TRUE
-            GROUP BY subject, COALESCE(NULLIF(TRIM(topic), ''), 'General Practice')
-            ORDER BY subject, count DESC
+            GROUP BY subject, COALESCE(NULLIF(TRIM(topic), ''), 'General'), COALESCE(NULLIF(TRIM(concept), ''), '')
         """);
 
-        Map<String, List<TopicInfo>> topicsBySubject = new LinkedHashMap<>();
-        Map<String, Integer> totalsBySubject = new LinkedHashMap<>();
-
-        // Ensure all 4 core subjects are initialized
-        for (String sub : List.of("DCME", "MATHEMATICS", "PHYSICS", "CHEMISTRY")) {
-            topicsBySubject.put(sub, new ArrayList<>());
-            totalsBySubject.put(sub, 0);
-        }
-
-        for (Map<String, Object> row : rows) {
-            String subject = (String) row.get("subject");
-            String topic = (String) row.get("topic");
-            int count = ((Number) row.get("count")).intValue();
-
-            topicsBySubject.computeIfAbsent(subject, k -> new ArrayList<>()).add(new TopicInfo(topic, count));
-            totalsBySubject.put(subject, totalsBySubject.getOrDefault(subject, 0) + count);
-        }
-
-        Map<String, String> displayNames = Map.of(
-            "DCME", "Computer Engineering (DCME)",
-            "MATHEMATICS", "Engineering Mathematics",
-            "PHYSICS", "Engineering Physics",
-            "CHEMISTRY", "Engineering Chemistry"
-        );
-
         List<SubjectCatalog> result = new ArrayList<>();
-        for (var entry : topicsBySubject.entrySet()) {
-            String sub = entry.getKey();
+
+        for (SubjectDefinition def : C23_SUBJECTS) {
+            Map<String, Integer> conceptCounts = new LinkedHashMap<>();
+            for (String cName : def.conceptNames()) {
+                conceptCounts.put(cName, 0);
+            }
+
+            int subjectTotal = 0;
+
+            for (Map<String, Object> r : rows) {
+                String sub = (String) r.get("subject");
+                String top = (String) r.get("topic");
+                String con = (String) r.get("concept");
+                int count = ((Number) r.get("count")).intValue();
+
+                boolean subjectMatches = false;
+                if ("GENERAL".equals(def.stream())) {
+                    if (def.id().equalsIgnoreCase(sub)) subjectMatches = true;
+                } else {
+                    if ("DCME".equalsIgnoreCase(sub)) {
+                        for (String alias : def.aliases()) {
+                            if (top.equalsIgnoreCase(alias) || top.toLowerCase().contains(alias.toLowerCase())) {
+                                subjectMatches = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (subjectMatches) {
+                    subjectTotal += count;
+                    // Match to specific concept
+                    if (!con.isEmpty()) {
+                        for (String cName : def.conceptNames()) {
+                            if (cName.equalsIgnoreCase(con) || cName.toLowerCase().contains(con.toLowerCase()) || con.toLowerCase().contains(cName.toLowerCase())) {
+                                conceptCounts.put(cName, conceptCounts.getOrDefault(cName, 0) + count);
+                                break;
+                            }
+                        }
+                    } else {
+                        // Spread unclassified to first concept
+                        if (!def.conceptNames().isEmpty()) {
+                            String first = def.conceptNames().get(0);
+                            conceptCounts.put(first, conceptCounts.getOrDefault(first, 0) + count);
+                        }
+                    }
+                }
+            }
+
+            List<ConceptInfo> conceptList = new ArrayList<>();
+            for (String cName : def.conceptNames()) {
+                conceptList.add(new ConceptInfo(cName, conceptCounts.getOrDefault(cName, 0)));
+            }
+
             result.add(new SubjectCatalog(
-                sub,
-                displayNames.getOrDefault(sub, sub),
-                totalsBySubject.getOrDefault(sub, 0),
-                entry.getValue()
+                def.id(),
+                def.displayName(),
+                def.stream(),
+                def.code(),
+                subjectTotal,
+                conceptList,
+                conceptList
             ));
         }
+
         return result;
     }
 
     public record StartPracticeRequest(
         String subject,
-        List<String> topics,
+        List<String> concepts,
+        List<String> topics, // alias
         Integer questionCount,
         Boolean timed,
         Integer durationMinutes
@@ -85,75 +327,67 @@ public class PracticeService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student account not found.");
         }
 
-        String subject = req.subject() == null ? "DCME" : req.subject().trim().toUpperCase(Locale.ROOT);
-        if (!Set.of("DCME", "MATHEMATICS", "PHYSICS", "CHEMISTRY").contains(subject)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid subject. Must be DCME, MATHEMATICS, PHYSICS, or CHEMISTRY.");
-        }
+        String rawSubject = req.subject() == null ? "OPERATING_SYSTEMS" : req.subject().trim();
+        SubjectDefinition matchedDef = C23_SUBJECTS.stream()
+            .filter(d -> d.id().equalsIgnoreCase(rawSubject) || d.displayName().equalsIgnoreCase(rawSubject) || d.aliases().stream().anyMatch(a -> a.equalsIgnoreCase(rawSubject)))
+            .findFirst()
+            .orElse(C23_SUBJECTS.get(0));
 
-        int requestedCount = req.questionCount() == null || req.questionCount() <= 0 ? 15 : Math.min(50, req.questionCount());
+        // Consolidate concepts list (fallback to topics if concepts not sent)
+        List<String> selectedConceptsList = (req.concepts() != null && !req.concepts().isEmpty())
+            ? req.concepts().stream().map(String::trim).filter(s -> !s.isBlank()).toList()
+            : (req.topics() != null ? req.topics().stream().map(String::trim).filter(s -> !s.isBlank()).toList() : List.of());
+
+        // Default to 50 questions as requested by student curriculum requirements
+        int requestedTotal = (req.questionCount() == null || req.questionCount() <= 0) ? 50 : Math.min(100, req.questionCount());
         boolean isTimed = Boolean.TRUE.equals(req.timed());
-        int duration = isTimed ? (req.durationMinutes() == null || req.durationMinutes() <= 0 ? requestedCount : req.durationMinutes()) : 0;
+        int duration = isTimed ? (req.durationMinutes() == null || req.durationMinutes() <= 0 ? 50 : req.durationMinutes()) : 0;
 
-        List<String> topics = req.topics() == null ? List.of() : req.topics().stream().map(String::trim).filter(s -> !s.isBlank()).toList();
-        String mode = topics.isEmpty() ? "SUBJECT" : (topics.size() == 1 ? "TOPIC" : "MULTI_TOPIC");
-        String selectedTopicsStr = topics.isEmpty() ? null : String.join(", ", topics);
+        String mode;
+        List<String> activeConcepts;
 
-        // Fetch matching questions
-        List<Map<String, Object>> candidateQuestions;
-        if (topics.isEmpty()) {
-            candidateQuestions = jdbc.queryForList("""
-                SELECT id, subject, topic, question_text, explanation, difficulty
-                FROM pyq_questions
-                WHERE active = TRUE AND verified = TRUE AND subject = ?
-                ORDER BY RANDOM()
-                LIMIT ?
-            """, subject, requestedCount);
+        if (selectedConceptsList.isEmpty() || selectedConceptsList.size() >= matchedDef.conceptNames().size()) {
+            // Entire Subject mode: all concepts involved
+            mode = "SUBJECT";
+            activeConcepts = matchedDef.conceptNames();
+        } else if (selectedConceptsList.size() == 1) {
+            // Single Concept mode
+            mode = "CONCEPT";
+            activeConcepts = selectedConceptsList;
         } else {
-            // Match any of selected topics
-            String inClause = String.join("','", topics.stream().map(t -> t.replace("'", "''")).toList());
-            candidateQuestions = jdbc.queryForList("""
-                SELECT id, subject, topic, question_text, explanation, difficulty
-                FROM pyq_questions
-                WHERE active = TRUE AND verified = TRUE AND subject = ? AND topic IN ('""" + inClause + """
-                ')
-                ORDER BY RANDOM()
-                LIMIT ?
-            """, subject, requestedCount);
+            // Multiple Concepts mode
+            mode = "MULTI_CONCEPT";
+            activeConcepts = selectedConceptsList;
         }
 
-        // Fallback to general subject questions if specific topic filter had too few
-        if (candidateQuestions.size() < requestedCount) {
-            int needed = requestedCount - candidateQuestions.size();
-            Set<UUID> existingIds = new HashSet<>();
-            for (var q : candidateQuestions) existingIds.add((UUID) q.get("id"));
+        String selectedConceptsStr = activeConcepts.isEmpty() ? null : String.join(", ", activeConcepts);
 
-            List<Map<String, Object>> extra = jdbc.queryForList("""
-                SELECT id, subject, topic, question_text, explanation, difficulty
+        // --- 50-Question Proportional Randomizer Engine ---
+        List<Map<String, Object>> candidateQuestions = sampleProportionalQuestions(matchedDef, activeConcepts, requestedTotal);
+
+        if (candidateQuestions.isEmpty()) {
+            // General fallback query across subject pool
+            candidateQuestions = jdbc.queryForList("""
+                SELECT id, subject, topic, concept, question_text, explanation, difficulty
                 FROM pyq_questions
-                WHERE active = TRUE AND verified = TRUE AND subject = ?
+                WHERE active = TRUE AND verified = TRUE
                 ORDER BY RANDOM()
                 LIMIT ?
-            """, subject, requestedCount);
-
-            for (var eq : extra) {
-                if (candidateQuestions.size() >= requestedCount) break;
-                UUID eqId = (UUID) eq.get("id");
-                if (!existingIds.contains(eqId)) {
-                    candidateQuestions.add(eq);
-                    existingIds.add(eqId);
-                }
-            }
+            """, requestedTotal);
         }
 
         if (candidateQuestions.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No verified questions found for this topic selection yet.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No verified questions found for this subject selection yet.");
         }
+
+        // Shuffle final combined question list
+        Collections.shuffle(candidateQuestions);
 
         UUID attemptId = UUID.randomUUID();
         jdbc.update("""
-            INSERT INTO practice_attempts(id, student_id, subject, mode, selected_topics, total_questions, duration_minutes, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'IN_PROGRESS')
-        """, attemptId, studentId, subject, mode, selectedTopicsStr, candidateQuestions.size(), duration);
+            INSERT INTO practice_attempts(id, student_id, subject, mode, selected_concepts, selected_topics, total_questions, duration_minutes, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'IN_PROGRESS')
+        """, attemptId, studentId, matchedDef.displayName(), mode, selectedConceptsStr, selectedConceptsStr, candidateQuestions.size(), duration);
 
         List<Map<String, Object>> returnedQuestions = new ArrayList<>();
         int order = 1;
@@ -163,9 +397,9 @@ public class PracticeService {
             UUID attemptQId = UUID.randomUUID();
 
             jdbc.update("""
-                INSERT INTO practice_attempt_questions(id, attempt_id, question_id, question_order, subject, topic, question_text, explanation, difficulty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, attemptQId, attemptId, qId, order, cq.get("subject"), cq.get("topic"), cq.get("question_text"), cq.get("explanation"), cq.get("difficulty"));
+                INSERT INTO practice_attempt_questions(id, attempt_id, question_id, question_order, subject, topic, concept, question_text, explanation, difficulty)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, attemptQId, attemptId, qId, order, cq.get("subject"), cq.get("topic"), cq.get("concept"), cq.get("question_text"), cq.get("explanation"), cq.get("difficulty"));
 
             // Copy options
             List<Map<String, Object>> options = jdbc.queryForList("""
@@ -193,8 +427,9 @@ public class PracticeService {
             returnedQuestions.add(Map.of(
                 "id", attemptQId,
                 "questionOrder", order,
-                "subject", cq.get("subject"),
+                "subject", cq.get("subject") == null ? matchedDef.displayName() : cq.get("subject"),
                 "topic", cq.get("topic") == null ? "" : cq.get("topic"),
+                "concept", cq.get("concept") == null ? "" : cq.get("concept"),
                 "questionText", cq.get("question_text"),
                 "options", safeOptions,
                 "selectedOptionId", ""
@@ -204,14 +439,85 @@ public class PracticeService {
 
         return Map.of(
             "attemptId", attemptId,
-            "subject", subject,
+            "subject", matchedDef.displayName(),
             "mode", mode,
-            "selectedTopics", selectedTopicsStr == null ? "" : selectedTopicsStr,
+            "selectedConcepts", selectedConceptsStr == null ? "" : selectedConceptsStr,
+            "selectedTopics", selectedConceptsStr == null ? "" : selectedConceptsStr,
             "totalQuestions", candidateQuestions.size(),
             "durationMinutes", duration,
             "status", "IN_PROGRESS",
             "questions", returnedQuestions
         );
+    }
+
+    private List<Map<String, Object>> sampleProportionalQuestions(
+        SubjectDefinition def, List<String> activeConcepts, int totalTarget) {
+
+        int conceptCount = Math.max(1, activeConcepts.size());
+        int basePerConcept = totalTarget / conceptCount;
+        int remainder = totalTarget % conceptCount;
+
+        List<Map<String, Object>> selectedQuestions = new ArrayList<>();
+        Set<UUID> chosenIds = new HashSet<>();
+
+        // 1. Draw proportional allocation per concept
+        for (int i = 0; i < conceptCount; i++) {
+            String conceptName = activeConcepts.get(i);
+            int quota = basePerConcept + (i < remainder ? 1 : 0);
+
+            List<Map<String, Object>> conceptPool = jdbc.queryForList("""
+                SELECT id, subject, topic, concept, question_text, explanation, difficulty
+                FROM pyq_questions
+                WHERE active = TRUE AND verified = TRUE
+                  AND (concept ILIKE ? OR topic ILIKE ?)
+                ORDER BY RANDOM()
+                LIMIT ?
+            """, "%" + conceptName + "%", "%" + conceptName + "%", quota);
+
+            for (var q : conceptPool) {
+                UUID qid = (UUID) q.get("id");
+                if (!chosenIds.contains(qid)) {
+                    selectedQuestions.add(q);
+                    chosenIds.add(qid);
+                }
+            }
+        }
+
+        // 2. Fallback / Top-up: if any concept had fewer questions than quota, top up from the parent subject pool
+        if (selectedQuestions.size() < totalTarget) {
+            int needed = totalTarget - selectedQuestions.size();
+
+            // Match subject aliases or stream
+            StringBuilder queryBuilder = new StringBuilder("""
+                SELECT id, subject, topic, concept, question_text, explanation, difficulty
+                FROM pyq_questions
+                WHERE active = TRUE AND verified = TRUE
+            """);
+
+            if ("GENERAL".equals(def.stream())) {
+                queryBuilder.append(" AND subject = '").append(def.id()).append("'");
+            } else {
+                queryBuilder.append(" AND (subject = 'DCME'");
+                for (String alias : def.aliases()) {
+                    queryBuilder.append(" OR topic ILIKE '%").append(alias.replace("'", "''")).append("%'");
+                }
+                queryBuilder.append(")");
+            }
+
+            queryBuilder.append(" ORDER BY RANDOM() LIMIT ").append(needed * 2);
+
+            List<Map<String, Object>> subjectPool = jdbc.queryForList(queryBuilder.toString());
+            for (var sq : subjectPool) {
+                if (selectedQuestions.size() >= totalTarget) break;
+                UUID sqId = (UUID) sq.get("id");
+                if (!chosenIds.contains(sqId)) {
+                    selectedQuestions.add(sq);
+                    chosenIds.add(sqId);
+                }
+            }
+        }
+
+        return selectedQuestions;
     }
 
     public record SaveAnswerRequest(UUID selectedOptionId) {}
@@ -274,7 +580,7 @@ public class PracticeService {
             "SELECT * FROM practice_attempts WHERE id=? AND student_id=?", attemptId, studentId);
 
         List<Map<String, Object>> questions = jdbc.queryForList("""
-            SELECT id, question_order, subject, topic, question_text, explanation, difficulty, selected_option_id, is_correct
+            SELECT id, question_order, subject, topic, concept, question_text, explanation, difficulty, selected_option_id, is_correct
             FROM practice_attempt_questions
             WHERE attempt_id=?
             ORDER BY question_order ASC
@@ -290,24 +596,27 @@ public class PracticeService {
                 ORDER BY option_label ASC
             """, qId);
 
-            reviewQuestions.add(Map.of(
-                "id", qId,
-                "questionOrder", q.get("question_order"),
-                "subject", q.get("subject"),
-                "topic", q.get("topic") == null ? "" : q.get("topic"),
-                "questionText", q.get("question_text"),
-                "explanation", q.get("explanation") == null ? "" : q.get("explanation"),
-                "difficulty", q.get("difficulty") == null ? "MEDIUM" : q.get("difficulty"),
-                "selectedOptionId", q.get("selected_option_id") == null ? "" : q.get("selected_option_id").toString(),
-                "isCorrect", Boolean.TRUE.equals(q.get("is_correct")),
-                "options", options
-            ));
+            Map<String, Object> qMap = new LinkedHashMap<>();
+            qMap.put("id", qId);
+            qMap.put("questionOrder", q.get("question_order"));
+            qMap.put("subject", q.get("subject"));
+            qMap.put("topic", q.get("topic") == null ? "" : q.get("topic"));
+            qMap.put("concept", q.get("concept") == null ? "" : q.get("concept"));
+            qMap.put("questionText", q.get("question_text"));
+            qMap.put("explanation", q.get("explanation") == null ? "" : q.get("explanation"));
+            qMap.put("difficulty", q.get("difficulty") == null ? "MEDIUM" : q.get("difficulty"));
+            qMap.put("selectedOptionId", q.get("selected_option_id") == null ? "" : q.get("selected_option_id").toString());
+            qMap.put("isCorrect", Boolean.TRUE.equals(q.get("is_correct")));
+            qMap.put("options", options);
+
+            reviewQuestions.add(qMap);
         }
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("attemptId", attemptId);
         response.put("subject", attempt.get("subject"));
         response.put("mode", attempt.get("mode"));
+        response.put("selectedConcepts", attempt.get("selected_concepts") == null ? "" : attempt.get("selected_concepts"));
         response.put("selectedTopics", attempt.get("selected_topics") == null ? "" : attempt.get("selected_topics"));
         response.put("totalQuestions", attempt.get("total_questions"));
         response.put("durationMinutes", attempt.get("duration_minutes"));
@@ -324,7 +633,7 @@ public class PracticeService {
     public List<Map<String, Object>> getRecentAttempts(String studentEmail) {
         UUID studentId = jdbc.queryForObject("SELECT id FROM users WHERE lower(email)=lower(?)", UUID.class, studentEmail);
         return jdbc.queryForList("""
-            SELECT id, subject, mode, selected_topics AS "selectedTopics", total_questions AS "totalQuestions",
+            SELECT id, subject, mode, selected_concepts AS "selectedConcepts", selected_topics AS "selectedTopics", total_questions AS "totalQuestions",
                    score, correct_count AS "correctCount", accuracy, started_at AS "startedAt", submitted_at AS "submittedAt", status
             FROM practice_attempts
             WHERE student_id=? AND status='SUBMITTED'

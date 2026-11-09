@@ -13,10 +13,12 @@ import {
   Layers,
   CheckSquare,
   Square,
-  HelpCircle
+  HelpCircle,
+  Cpu,
+  GraduationCap
 } from 'lucide-react';
 
-interface TopicInfo {
+interface ConceptInfo {
   name: string;
   questionCount: number;
 }
@@ -24,8 +26,11 @@ interface TopicInfo {
 interface SubjectCatalog {
   subject: string;
   displayName: string;
+  stream: string;
+  code?: string;
   totalQuestions: number;
-  topics: TopicInfo[];
+  concepts: ConceptInfo[];
+  topics?: ConceptInfo[];
 }
 
 interface PracticeOption {
@@ -40,6 +45,7 @@ interface PracticeQuestion {
   questionOrder: number;
   subject: string;
   topic: string;
+  concept?: string;
   questionText: string;
   options: PracticeOption[];
   selectedOptionId?: string;
@@ -51,7 +57,8 @@ interface PracticeAttempt {
   attemptId: string;
   subject: string;
   mode: string;
-  selectedTopics: string;
+  selectedConcepts?: string;
+  selectedTopics?: string;
   totalQuestions: number;
   durationMinutes: number;
   status: string;
@@ -67,7 +74,8 @@ interface RecentAttempt {
   id: string;
   subject: string;
   mode: string;
-  selectedTopics: string;
+  selectedConcepts?: string;
+  selectedTopics?: string;
   totalQuestions: number;
   score: number;
   correctCount: number;
@@ -79,9 +87,10 @@ interface RecentAttempt {
 export const PracticeDrillView: React.FC = () => {
   const [view, setView] = useState<'picker' | 'running' | 'review'>('picker');
   const [catalogs, setCatalogs] = useState<SubjectCatalog[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>('DCME');
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [questionCount, setQuestionCount] = useState<number>(15);
+  const [activeStream, setActiveStream] = useState<'DCME' | 'GENERAL'>('DCME');
+  const [selectedSubject, setSelectedSubject] = useState<string>('OPERATING_SYSTEMS');
+  const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
+  const [questionCount, setQuestionCount] = useState<number>(50);
   const [isTimed, setIsTimed] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [starting, setStarting] = useState<boolean>(false);
@@ -107,11 +116,16 @@ export const PracticeDrillView: React.FC = () => {
     try {
       const data = await apiRequest<SubjectCatalog[]>('/api/v1/practice/topics');
       setCatalogs(data);
-      if (data.length > 0 && !selectedSubject) {
-        setSelectedSubject(data[0].subject);
+      if (data.length > 0) {
+        const dcmeFirst = data.find((c) => c.stream === 'DCME');
+        if (dcmeFirst) {
+          setSelectedSubject(dcmeFirst.subject);
+        } else {
+          setSelectedSubject(data[0].subject);
+        }
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to load topics.');
+      setError(e.message || 'Failed to load curriculum catalog.');
     } finally {
       setLoading(false);
     }
@@ -125,15 +139,16 @@ export const PracticeDrillView: React.FC = () => {
   };
 
   const currentCatalog = catalogs.find((c) => c.subject === selectedSubject) || catalogs[0];
+  const currentConcepts = currentCatalog?.concepts || currentCatalog?.topics || [];
 
-  const toggleTopic = (topicName: string) => {
-    setSelectedTopics((prev) =>
-      prev.includes(topicName) ? prev.filter((t) => t !== topicName) : [...prev, topicName]
+  const toggleConcept = (conceptName: string) => {
+    setSelectedConcepts((prev) =>
+      prev.includes(conceptName) ? prev.filter((t) => t !== conceptName) : [...prev, conceptName]
     );
   };
 
-  const selectAllTopics = () => {
-    setSelectedTopics([]);
+  const selectEntireSubject = () => {
+    setSelectedConcepts([]);
   };
 
   // Timer Effect
@@ -164,7 +179,8 @@ export const PracticeDrillView: React.FC = () => {
     try {
       const payload = {
         subject: selectedSubject,
-        topics: selectedTopics,
+        concepts: selectedConcepts,
+        topics: selectedConcepts,
         questionCount: questionCount,
         timed: isTimed,
         durationMinutes: isTimed ? questionCount : 0
@@ -261,19 +277,69 @@ export const PracticeDrillView: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const filteredCatalogs = catalogs.filter((c) => (c.stream || 'DCME') === activeStream);
+
   // --- 1. PICKER / CONFIGURATION VIEW ---
   if (view === 'picker') {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
         {/* Header Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-xs">
-          <div className="flex items-center gap-3 mb-2">
-            <Layers className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">Subject & Topic-Wise Drills</h2>
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-7 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold">
+                <Layers className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">C-23 Subject & Concept Drills</h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Official AP ECET 2027 Diploma Curriculum Questions & 50-Question Proportional Randomizer
+                </p>
+              </div>
+            </div>
+
+            {/* Stream Switcher */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveStream('DCME');
+                  const first = catalogs.find((c) => c.stream === 'DCME');
+                  if (first) {
+                    setSelectedSubject(first.subject);
+                    setSelectedConcepts([]);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeStream === 'DCME'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5 text-emerald-600" />
+                <span>DCME Core (14 Subjects)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveStream('GENERAL');
+                  const first = catalogs.find((c) => c.stream === 'GENERAL');
+                  if (first) {
+                    setSelectedSubject(first.subject);
+                    setSelectedConcepts([]);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeStream === 'GENERAL'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-slate-600" />
+                <span>General Sciences (Maths/Phy/Chem)</span>
+              </button>
+            </div>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            Target specific topics you just studied or take a full subject practice test across DCME, Maths, Physics, and Chemistry. Instant scoring with comprehensive explanations.
-          </p>
         </div>
 
         {error && (
@@ -284,14 +350,19 @@ export const PracticeDrillView: React.FC = () => {
         )}
 
         {/* Step 1: Select Subject */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-blue-600" />
-            Step 1: Select Subject
-          </h3>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-emerald-700" />
+              Step 1: Select Technical Subject
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              {filteredCatalogs.length} Subjects available
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {catalogs.map((cat) => {
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filteredCatalogs.map((cat) => {
               const isSelected = selectedSubject === cat.subject;
               return (
                 <button
@@ -299,18 +370,27 @@ export const PracticeDrillView: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setSelectedSubject(cat.subject);
-                    setSelectedTopics([]);
+                    setSelectedConcepts([]);
                   }}
-                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                     isSelected
-                      ? 'border-blue-600 bg-blue-50/70 text-blue-900 ring-2 ring-blue-500/20 shadow-xs'
+                      ? 'border-emerald-700 bg-emerald-50/60 text-slate-900 ring-2 ring-emerald-600/20 shadow-xs'
                       : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700'
                   }`}
                 >
-                  <span className="text-xs font-extrabold">{cat.subject}</span>
-                  <span className="text-xs text-slate-500 mt-1 line-clamp-1">{cat.displayName}</span>
-                  <span className="text-[11px] font-semibold text-slate-400 mt-2">
-                    {cat.totalQuestions} Questions Available
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-100/60 px-1.5 py-0.5 rounded">
+                      {cat.code || cat.subject}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      {cat.totalQuestions} Qs
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold mt-2 text-slate-900 line-clamp-1">
+                    {cat.displayName}
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-1">
+                    {cat.concepts?.length || 5} Concepts
                   </span>
                 </button>
               );
@@ -318,56 +398,76 @@ export const PracticeDrillView: React.FC = () => {
           </div>
         </div>
 
-        {/* Step 2: Select Topics */}
+        {/* Step 2: Select Concepts */}
         {currentCatalog && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-blue-600" />
-                  Step 2: Choose Topic Focus
+                  <Layers className="w-4 h-4 text-emerald-700" />
+                  Step 2: Choose Concepts in {currentCatalog.displayName}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Select "All Topics" for a comprehensive subject exam, or check specific topics to target.
+                  Select "Entire Subject" to test all units, or choose specific concepts to target.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={selectAllTopics}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                    selectedTopics.length === 0
-                      ? 'bg-slate-900 text-white'
+                  onClick={selectEntireSubject}
+                  className={`text-xs px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    selectedConcepts.length === 0
+                      ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  All Topics (Entire Subject)
+                  Select Entire Subject ({currentConcepts.length} Concepts)
                 </button>
               </div>
             </div>
 
+            {/* Randomization Formula Banner */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                {selectedConcepts.length === 0 ? (
+                  <span>
+                    <strong>Entire Subject Mode:</strong> 50 questions will be proportionally randomized across all {currentConcepts.length} concepts ({Math.floor(50 / Math.max(1, currentConcepts.length))} questions per concept).
+                  </span>
+                ) : selectedConcepts.length === 1 ? (
+                  <span>
+                    <strong>Single-Concept Drill:</strong> 50 questions will be randomized from <em>"{selectedConcepts[0]}"</em>.
+                  </span>
+                ) : (
+                  <span>
+                    <strong>Multi-Concept Drill:</strong> 50 questions will be proportionally distributed across your {selectedConcepts.length} selected concepts ({Math.floor(50 / selectedConcepts.length)} questions each).
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
-              {currentCatalog.topics.map((top) => {
-                const isChecked = selectedTopics.includes(top.name);
+              {currentConcepts.map((con) => {
+                const isChecked = selectedConcepts.includes(con.name);
                 return (
                   <button
-                    key={top.name}
+                    key={con.name}
                     type="button"
-                    onClick={() => toggleTopic(top.name)}
+                    onClick={() => toggleConcept(con.name)}
                     className={`p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between gap-2 cursor-pointer ${
                       isChecked
-                        ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-bold ring-1 ring-blue-500/20'
+                        ? 'border-emerald-700 bg-emerald-50/70 text-slate-900 font-bold ring-1 ring-emerald-600/30 shadow-xs'
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
-                    <span className="truncate pr-1">{top.name}</span>
+                    <span className="truncate pr-1">{con.name}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] text-slate-400 font-medium">
-                        {top.questionCount} Qs
+                        {con.questionCount} Qs
                       </span>
                       {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-blue-600" />
+                        <CheckSquare className="w-4 h-4 text-emerald-700" />
                       ) : (
                         <Square className="w-4 h-4 text-slate-300" />
                       )}
@@ -380,28 +480,28 @@ export const PracticeDrillView: React.FC = () => {
         )}
 
         {/* Step 3: Question Count & Timer */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-600" />
+            <Sparkles className="w-4 h-4 text-emerald-700" />
             Step 3: Drill Length & Mode
           </h3>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-2">Number of Questions</label>
-              <div className="grid grid-cols-5 gap-2">
-                {[10, 15, 20, 25, 30].map((num) => (
+              <label className="block text-xs font-bold text-slate-700 mb-2">Question Count</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[50, 25, 15].map((num) => (
                   <button
                     key={num}
                     type="button"
                     onClick={() => setQuestionCount(num)}
                     className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                       questionCount === num
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                         : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    {num} Qs
+                    {num === 50 ? '50 Qs (Standard)' : `${num} Qs`}
                   </button>
                 ))}
               </div>
@@ -415,7 +515,7 @@ export const PracticeDrillView: React.FC = () => {
                   onClick={() => setIsTimed(false)}
                   className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     !isTimed
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-bold'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -426,7 +526,7 @@ export const PracticeDrillView: React.FC = () => {
                   onClick={() => setIsTimed(true)}
                   className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     isTimed
-                      ? 'bg-blue-50 text-blue-800 border-blue-300 font-bold'
+                      ? 'bg-slate-900 text-white border-slate-900 font-bold'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -441,18 +541,18 @@ export const PracticeDrillView: React.FC = () => {
               type="button"
               disabled={starting || loading}
               onClick={handleStartPractice}
-              className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
             >
               {starting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Preparing Practice Drill...</span>
+                  <span>Generating Randomized Drill ({questionCount} Questions)...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 text-emerald-400" />
                   <span>
-                    Start {selectedSubject} Practice ({questionCount} Questions)
+                    Start {currentCatalog?.displayName || selectedSubject} Drill ({questionCount} Questions)
                   </span>
                 </>
               )}
@@ -462,7 +562,7 @@ export const PracticeDrillView: React.FC = () => {
 
         {/* Recent Practice History */}
         {recentAttempts.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <RotateCcw className="w-4 h-4 text-slate-500" />
               Your Recent Practice Drills
@@ -473,13 +573,13 @@ export const PracticeDrillView: React.FC = () => {
                 <div key={att.id} className="py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div>
                     <div className="font-bold text-slate-800 flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-extrabold text-[11px]">
+                      <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-extrabold text-[11px] border border-emerald-200">
                         {att.subject}
                       </span>
-                      <span>{att.selectedTopics || 'Full Subject Drill'}</span>
+                      <span>{att.selectedConcepts || att.selectedTopics || 'Full Subject Drill'}</span>
                     </div>
                     <div className="text-[11px] text-slate-400 mt-0.5">
-                      {att.totalQuestions} Questions • Completed on{' '}
+                      {att.totalQuestions} Questions • Mode: {att.mode} • Completed on{' '}
                       {new Date(att.submittedAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -489,7 +589,7 @@ export const PracticeDrillView: React.FC = () => {
                       <span className="font-extrabold text-sm text-slate-900">
                         {att.score} / {att.totalQuestions}
                       </span>
-                      <span className="text-[11px] text-emerald-600 font-bold block">
+                      <span className="text-[11px] text-emerald-700 font-bold block">
                         {Math.round(att.accuracy || 0)}% Accuracy
                       </span>
                     </div>
@@ -521,7 +621,7 @@ export const PracticeDrillView: React.FC = () => {
         {/* Runner Header */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div>
-            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md">
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
               {activeAttempt.subject} • {activeAttempt.mode}
             </span>
             <p className="text-xs text-slate-500 mt-1 font-medium">
@@ -532,11 +632,11 @@ export const PracticeDrillView: React.FC = () => {
           <div className="flex items-center gap-3">
             {activeAttempt.durationMinutes > 0 ? (
               <div className="flex items-center gap-1.5 font-mono text-sm font-bold bg-slate-100 text-slate-800 px-3 py-1.5 rounded-xl border border-slate-200">
-                <Clock className="w-4 h-4 text-blue-600" />
+                <Clock className="w-4 h-4 text-emerald-700" />
                 <span>{formatTimer(remainingSeconds)}</span>
               </div>
             ) : (
-              <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+              <span className="text-xs font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
                 Untimed Practice
               </span>
             )}
@@ -545,22 +645,53 @@ export const PracticeDrillView: React.FC = () => {
               type="button"
               onClick={handleSubmitPractice}
               disabled={submitting}
-              className="py-1.5 px-3 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer"
+              className="py-1.5 px-3 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer"
             >
               Submit Early
             </button>
           </div>
         </div>
 
+        {/* Question Navigator Dots */}
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-xs flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+          {activeAttempt.questions.map((q, idx) => {
+            const isAnswered = !!q.selectedOptionId;
+            const isCurrent = idx === currentIndex;
+            return (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => setCurrentIndex(idx)}
+                className={`w-7 h-7 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center ${
+                  isCurrent
+                    ? 'bg-slate-900 text-white ring-2 ring-slate-900/20'
+                    : isAnswered
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {idx + 1}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Question Card */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-100 pb-3">
             <span className="font-bold text-slate-700">Question #{currentIndex + 1}</span>
-            {currentQ.topic && (
-              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium text-[11px]">
-                {currentQ.topic}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {currentQ.concept && (
+                <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-medium text-[11px]">
+                  {currentQ.concept}
+                </span>
+              )}
+              {currentQ.topic && !currentQ.concept && (
+                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium text-[11px]">
+                  {currentQ.topic}
+                </span>
+              )}
+            </div>
           </div>
 
           <h3 className="text-base sm:text-lg font-semibold text-slate-900 leading-relaxed">
@@ -577,13 +708,13 @@ export const PracticeDrillView: React.FC = () => {
                   onClick={() => handleChooseOption(opt.id)}
                   className={`w-full text-left p-4 rounded-xl border text-sm transition-all cursor-pointer flex items-center gap-3 ${
                     isSelected
-                      ? 'border-blue-600 bg-blue-50/80 text-blue-900 font-semibold ring-2 ring-blue-500/20 shadow-xs'
+                      ? 'border-emerald-700 bg-emerald-50/70 text-slate-900 font-semibold ring-2 ring-emerald-600/20 shadow-xs'
                       : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800'
                   }`}
                 >
                   <span
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                      isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'
                     }`}
                   >
                     {opt.label}
@@ -614,7 +745,7 @@ export const PracticeDrillView: React.FC = () => {
                 type="button"
                 disabled={submitting}
                 onClick={handleSubmitPractice}
-                className="py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+                className="py-2.5 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{submitting ? 'Submitting...' : 'Finish & Submit Drill'}</span>
@@ -641,129 +772,141 @@ export const PracticeDrillView: React.FC = () => {
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         {/* Results Banner */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-700 mx-auto flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Practice Drill Completed!</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Drill Completed!</h2>
             <p className="text-xs text-slate-500 mt-1">
-              {activeAttempt.subject} • {activeAttempt.selectedTopics || 'Full Subject Drill'}
+              {activeAttempt.subject} • Mode: {activeAttempt.mode}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto pt-2">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-xl font-black text-slate-900">
+          <div className="grid grid-cols-4 gap-3 max-w-lg mx-auto pt-2">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 block uppercase">Score</span>
+              <span className="text-lg font-extrabold text-slate-900">
                 {activeAttempt.score} / {activeAttempt.totalQuestions}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Score</span>
             </div>
-
-            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-              <span className="text-xl font-black text-emerald-700">
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+              <span className="text-[11px] font-bold text-emerald-800 block uppercase">Correct</span>
+              <span className="text-lg font-extrabold text-emerald-800">
                 {activeAttempt.correctCount}
               </span>
-              <span className="text-[11px] text-emerald-600 block mt-0.5">Correct</span>
             </div>
-
-            <div className="p-3 bg-red-50 rounded-xl border border-red-100">
-              <span className="text-xl font-black text-red-700">
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+              <span className="text-[11px] font-bold text-red-800 block uppercase">Incorrect</span>
+              <span className="text-lg font-extrabold text-red-800">
                 {activeAttempt.incorrectCount}
               </span>
-              <span className="text-[11px] text-red-600 block mt-0.5">Incorrect</span>
             </div>
-
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <span className="text-xl font-black text-blue-700">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[11px] font-bold text-slate-400 block uppercase">Accuracy</span>
+              <span className="text-lg font-extrabold text-slate-900">
                 {Math.round(activeAttempt.accuracy || 0)}%
               </span>
-              <span className="text-[11px] text-blue-600 block mt-0.5">Accuracy</span>
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {
                 setActiveAttempt(null);
                 setView('picker');
               }}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm cursor-pointer"
+              className="py-2.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs cursor-pointer flex items-center gap-2"
             >
-              Practice Another Topic
+              <RotateCcw className="w-4 h-4" />
+              <span>Take Another Drill</span>
             </button>
           </div>
         </div>
 
-        {/* Question by Question Review with Conceptual Explanations */}
+        {/* Detailed Question Review List */}
         <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-blue-600" />
-            Detailed Question Explanations ({activeAttempt.questions.length})
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-emerald-700" />
+            Detailed Review & Explanations ({activeAttempt.questions.length} Questions)
           </h3>
 
           {activeAttempt.questions.map((q, idx) => {
+            const isUserCorrect = q.isCorrect;
+            const isUnanswered = !q.selectedOptionId;
+
             return (
               <div
                 key={q.id}
-                className={`p-5 rounded-2xl border transition-all space-y-4 ${
-                  q.isCorrect
-                    ? 'border-emerald-200 bg-white'
-                    : q.selectedOptionId
-                    ? 'border-red-200 bg-white'
-                    : 'border-slate-200 bg-white'
-                }`}
+                className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800">Question {idx + 1}</span>
+                  <span className="font-bold text-slate-800">Question #{idx + 1}</span>
                   <div className="flex items-center gap-2">
-                    {q.topic && (
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px]">
-                        {q.topic}
+                    {q.concept && (
+                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-medium">
+                        {q.concept}
                       </span>
                     )}
-                    {q.isCorrect ? (
-                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
-                        ✓ Correct
+                    {isUnanswered ? (
+                      <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                        Unanswered
                       </span>
-                    ) : q.selectedOptionId ? (
-                      <span className="text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded text-[11px]">
-                        ✗ Incorrect
+                    ) : isUserCorrect ? (
+                      <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Correct (+1)
                       </span>
                     ) : (
-                      <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                        Unanswered
+                      <span className="bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full font-bold text-[10px] flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Incorrect (0)
                       </span>
                     )}
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 leading-relaxed">
+                <p className="text-sm sm:text-base font-medium text-slate-900 leading-relaxed">
                   {q.questionText}
                 </p>
 
-                <div className="grid sm:grid-cols-2 gap-2 text-xs">
+                <div className="space-y-2">
                   {q.options.map((opt) => {
                     const isSelected = q.selectedOptionId === opt.id;
                     const isCorrect = opt.is_correct;
 
-                    let style = 'border-slate-200 bg-slate-50/50 text-slate-700';
+                    let optionStyle = 'border-slate-200 bg-white text-slate-700';
                     if (isCorrect) {
-                      style = 'border-emerald-400 bg-emerald-50 text-emerald-900 font-bold';
-                    } else if (isSelected) {
-                      style = 'border-red-400 bg-red-50 text-red-900 font-bold';
+                      optionStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold ring-1 ring-emerald-500/30';
+                    } else if (isSelected && !isCorrect) {
+                      optionStyle = 'border-red-300 bg-red-50 text-red-900';
                     }
 
                     return (
-                      <div key={opt.id} className={`p-3 rounded-xl border flex items-center gap-2 ${style}`}>
-                        <span className="w-5 h-5 rounded-full bg-white/80 border border-current text-[11px] font-bold flex items-center justify-center shrink-0">
+                      <div
+                        key={opt.id}
+                        className={`p-3 rounded-xl border text-xs sm:text-sm flex items-center gap-3 ${optionStyle}`}
+                      >
+                        <span
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            isCorrect
+                              ? 'bg-emerald-600 text-white'
+                              : isSelected
+                              ? 'bg-red-600 text-white'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
                           {opt.label}
                         </span>
-                        <span>{opt.text}</span>
-                        {isCorrect && <span className="ml-auto text-[10px] text-emerald-700 uppercase">Correct</span>}
+                        <span className="flex-1">{opt.text}</span>
+                        {isCorrect && (
+                          <span className="text-[11px] font-bold text-emerald-700 shrink-0">
+                            Correct Answer
+                          </span>
+                        )}
                         {isSelected && !isCorrect && (
-                          <span className="ml-auto text-[10px] text-red-700 uppercase">Your Choice</span>
+                          <span className="text-[11px] font-bold text-red-600 shrink-0">
+                            Your Choice
+                          </span>
                         )}
                       </div>
                     );
@@ -771,12 +914,11 @@ export const PracticeDrillView: React.FC = () => {
                 </div>
 
                 {q.explanation && (
-                  <div className="rounded-xl bg-blue-50/70 border border-blue-200/80 p-3.5 text-xs space-y-1">
-                    <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      Conceptual Explanation:
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+                    <span className="font-bold text-slate-900 block flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Explanation
                     </span>
-                    <p className="text-slate-700 leading-relaxed font-sans">{q.explanation}</p>
+                    <p className="leading-relaxed text-slate-600">{q.explanation}</p>
                   </div>
                 )}
               </div>
