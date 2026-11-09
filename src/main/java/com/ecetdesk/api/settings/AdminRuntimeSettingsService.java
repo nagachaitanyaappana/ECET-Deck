@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminRuntimeSettingsService {
-    private static final String DEFAULT_MODEL = "openai/gpt-4o-mini";
+    private static final String DEFAULT_MODEL = "openrouter/free";
     private final JdbcTemplate jdbc;
     private final String environmentApiKey;
     private final String environmentBrevoApiKey;

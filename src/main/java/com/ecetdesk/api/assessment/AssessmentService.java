@@ -59,11 +59,7 @@ public class AssessmentService {
     @Transactional
     public void deleteTest(UUID testId) {
         jdbc.update("UPDATE grand_test_requests SET generated_test_id=NULL WHERE generated_test_id=?", testId);
-        Integer attempts = jdbc.queryForObject("SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, testId);
-        if (attempts != null && attempts > 0) {
-            jdbc.update("UPDATE tests SET scheduled_date=NULL, status='ARCHIVED' WHERE id=?", testId);
-            return;
-        }
+        jdbc.update("DELETE FROM test_attempts WHERE test_id=?", testId);
         jdbc.update("DELETE FROM test_questions WHERE test_id=?", testId);
         jdbc.update("DELETE FROM test_subject_allocations WHERE test_id=?", testId);
         jdbc.update("DELETE FROM tests WHERE id=?", testId);
@@ -93,18 +89,9 @@ public class AssessmentService {
             }
 
             List<Map<String, Object>> existing = jdbc.queryForList(
-                "SELECT id, title, status FROM tests WHERE test_type='DAILY' AND scheduled_date=?", scheduledDate);
-            if (!existing.isEmpty()) {
-                UUID existingId = (UUID) existing.get(0).get("id");
-                Integer attempts = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM test_attempts WHERE test_id=?", Integer.class, existingId);
-                if (attempts != null && attempts > 0) {
-                    // Archive existing daily mock so past student attempts are preserved,
-                    // and clear scheduled_date so today's new mock can be generated.
-                    jdbc.update("UPDATE tests SET scheduled_date=NULL, status='ARCHIVED' WHERE id=?", existingId);
-                } else {
-                    deleteTest(existingId);
-                }
+                "SELECT id FROM tests WHERE test_type='DAILY' AND scheduled_date=?", scheduledDate);
+            for (var row : existing) {
+                deleteTest((UUID) row.get("id"));
             }
 
             title = (r.customTitle() != null && !r.customTitle().isBlank())
