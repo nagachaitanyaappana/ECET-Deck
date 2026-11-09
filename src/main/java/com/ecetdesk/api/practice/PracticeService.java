@@ -196,24 +196,22 @@ public class PracticeService {
         new SubjectDefinition(
             "MATHEMATICS", "Engineering Mathematics", "CM-102/301", "GENERAL",
             List.of(
-                "Matrices & Determinants",
-                "Trigonometry",
-                "Analytical Geometry",
-                "Differential Calculus",
-                "Integral Calculus & Differential Equations",
-                "Laplace Transforms & Vector Algebra"
+                "Matrices, Determinants & Algebra",
+                "Trigonometry & Complex Numbers",
+                "Coordinate Geometry (Lines, Circles & Conics)",
+                "Differential Calculus & Applications",
+                "Integral Calculus & Differential Equations"
             ),
             List.of("MATHEMATICS", "Mathematics", "Maths")
         ),
         new SubjectDefinition(
             "PHYSICS", "Engineering Physics", "CM-103", "GENERAL",
             List.of(
-                "Units, Dimensions & Vectors",
-                "Kinematics, Friction & Dynamics",
-                "Work, Power & Energy",
-                "Simple Harmonic Motion & Sound",
-                "Heat & Thermodynamics",
-                "Modern Physics & Optics"
+                "Units, Measurements & Vectors",
+                "Statics, Kinematics & Friction",
+                "Work, Power, Energy & Gravitation",
+                "Thermal Physics & Sound",
+                "Electricity, Magnetism & Modern Physics"
             ),
             List.of("PHYSICS", "Physics")
         ),
@@ -223,7 +221,8 @@ public class PracticeService {
                 "Atomic Structure & Chemical Bonding",
                 "Solutions, Acids & Bases",
                 "Electrochemistry & Corrosion",
-                "Water Technology, Polymers & Environmental Chemistry"
+                "Water Treatment & Environmental Chemistry",
+                "Polymers, Engineering Materials & Fuels"
             ),
             List.of("CHEMISTRY", "Chemistry")
         )
@@ -461,6 +460,10 @@ public class PracticeService {
         Set<UUID> chosenIds = new HashSet<>();
 
         // 1. Draw proportional allocation per concept
+        String subjectFilter = "GENERAL".equals(def.stream())
+            ? " AND subject = '" + def.id() + "'"
+            : " AND subject = 'DCME'";
+
         for (int i = 0; i < conceptCount; i++) {
             String conceptName = activeConcepts.get(i);
             int quota = basePerConcept + (i < remainder ? 1 : 0);
@@ -470,6 +473,7 @@ public class PracticeService {
                 FROM pyq_questions
                 WHERE active = TRUE AND verified = TRUE
                   AND (concept ILIKE ? OR topic ILIKE ?)
+            """ + subjectFilter + """
                 ORDER BY RANDOM()
                 LIMIT ?
             """, "%" + conceptName + "%", "%" + conceptName + "%", quota);
