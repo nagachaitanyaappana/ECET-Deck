@@ -265,22 +265,15 @@ export const PracticeDrillView: React.FC = () => {
   if (view === 'picker') {
     return (
       <div className="space-y-6 animate-fade-in">
-        {/* Banner */}
-        <div className="rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-6 sm:p-7 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full text-blue-100">
-                Self-Paced Practice
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold mt-2">Subject & Topic-Wise Drills</h2>
-              <p className="text-blue-100 text-xs sm:text-sm mt-1 max-w-xl">
-                Target specific topics you just studied or take a full subject practice test. Instant results with conceptual explanations.
-              </p>
-            </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-xs flex items-center justify-center border border-white/20">
-              <Layers className="w-7 h-7 text-white" />
-            </div>
+        {/* Header Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-xs">
+          <div className="flex items-center gap-3 mb-2">
+            <Layers className="w-6 h-6 text-blue-600" />
+            <h2 className="text-xl font-bold text-slate-900">Subject & Topic-Wise Drills</h2>
           </div>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Target specific topics you just studied or take a full subject practice test across DCME, Maths, Physics, and Chemistry. Instant scoring with comprehensive explanations.
+          </p>
         </div>
 
         {error && (
@@ -331,7 +324,7 @@ export const PracticeDrillView: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <Layers className="w-4 h-4 text-blue-600" />
                   Step 2: Choose Topic Focus
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -364,7 +357,7 @@ export const PracticeDrillView: React.FC = () => {
                     onClick={() => toggleTopic(top.name)}
                     className={`p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between gap-2 cursor-pointer ${
                       isChecked
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-900 font-bold'
+                        ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-bold ring-1 ring-blue-500/20'
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
@@ -374,7 +367,7 @@ export const PracticeDrillView: React.FC = () => {
                         {top.questionCount} Qs
                       </span>
                       {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-indigo-600" />
+                        <CheckSquare className="w-4 h-4 text-blue-600" />
                       ) : (
                         <Square className="w-4 h-4 text-slate-300" />
                       )}
@@ -433,7 +426,7 @@ export const PracticeDrillView: React.FC = () => {
                   onClick={() => setIsTimed(true)}
                   className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     isTimed
-                      ? 'bg-indigo-50 text-indigo-800 border-indigo-300 font-bold'
+                      ? 'bg-blue-50 text-blue-800 border-blue-300 font-bold'
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -564,7 +557,7 @@ export const PracticeDrillView: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-100 pb-3">
             <span className="font-bold text-slate-700">Question #{currentIndex + 1}</span>
             {currentQ.topic && (
-              <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-medium text-[11px]">
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium text-[11px]">
                 {currentQ.topic}
               </span>
             )}

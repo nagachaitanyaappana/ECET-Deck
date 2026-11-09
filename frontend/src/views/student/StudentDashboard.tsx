@@ -191,7 +191,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Layers className="w-4 h-4 text-indigo-500" />
+          <Layers className="w-4 h-4" />
           Subject & Topic Drills
         </button>
 
