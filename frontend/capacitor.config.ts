@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.ecetdesk.app',
-  appName: 'Paradox',
+  appName: 'ECET Deck',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

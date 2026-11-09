@@ -189,7 +189,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ manualCheck, onC
             </div>
             <h3 className="text-lg font-bold text-slate-900">App is Up to Date</h3>
             <p className="text-xs text-slate-600">
-              You are currently using the latest version of ECET Desk (v{CURRENT_APP_VERSION}).
+              You are currently using the latest version of ECET Deck (v{CURRENT_APP_VERSION}).
             </p>
             <button
               onClick={handleDismiss}
@@ -215,7 +215,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ manualCheck, onC
             </div>
 
             <p className="text-xs text-slate-500">
-              A newer build of ECET Desk is ready with performance upgrades, new exams, and UI improvements.
+              A newer build of ECET Deck is ready with performance upgrades, new exams, and UI improvements.
             </p>
 
             {versionInfo?.releaseNotes && !isDownloading && (
@@ -258,7 +258,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ manualCheck, onC
                 <p className="text-[11px] text-slate-500 text-center">
                   {downloadStatus === 'installing'
                     ? 'Please tap "Update" on the Android system prompt.'
-                    : 'Downloading directly inside ECET Desk…'}
+                    : 'Downloading directly inside ECET Deck…'}
                 </p>
               </div>
             )}
@@ -271,7 +271,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({ manualCheck, onC
                   <span>Permission Required</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  Android requires permission to install apps outside the store. Please allow "Install unknown apps" for ECET Desk, then tap install.
+                  Android requires permission to install apps outside the store. Please allow "Install unknown apps" for ECET Deck, then tap install.
                 </p>
                 <button
                   type="button"
