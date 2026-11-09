@@ -362,22 +362,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-16 z-30 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 bg-white/95 p-2 rounded-2xl border border-slate-200 mb-8 backdrop-blur-md shadow-sm">
+      <div className="dashboard-tabs">
         <button
           onClick={() => setTab('tests')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'tests'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          Test Paper Management
+          Test Papers
         </button>
 
         <button
           onClick={() => setTab('analytics')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors ${
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
             tab === 'analytics'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -396,7 +396,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
           }`}
         >
           <Trophy className="w-4 h-4" />
-          Friends Leaderboard
+          Leaderboard
         </button>
 
         <button
@@ -442,7 +442,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
 
         <button
           onClick={() => setTab('settings')}
-          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'settings' ? 'border-lime-600 text-lime-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'settings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
         >
           <Server className="w-4 h-4" />
           Server Settings

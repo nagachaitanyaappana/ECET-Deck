@@ -1,15 +1,16 @@
-const DEFAULT_API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const DEFAULT_API_BASE = (import.meta.env.VITE_API_URL || 'https://ecet-deck.onrender.com').replace(/\/+$/, '');
 
 export function getApiBaseUrl(): string {
   const saved = localStorage.getItem('ecet_api_base_url');
-  if (saved) return saved.replace(/\/+$/, '');
-  if (DEFAULT_API_BASE) return DEFAULT_API_BASE;
+  if (saved && !saved.includes('10.0.2.2') && !saved.includes('localhost:8080')) {
+    return saved.replace(/\/+$/, '');
+  }
   const isCapacitor = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor.isNativePlatform();
   if (isCapacitor) {
-    // In Android emulator, 10.0.2.2 points to host machine localhost
-    return 'http://10.0.2.2:8080';
+    return 'https://ecet-deck.onrender.com';
   }
-  return '';
+  if (DEFAULT_API_BASE) return DEFAULT_API_BASE;
+  return 'https://ecet-deck.onrender.com';
 }
 
 export function setApiBaseUrl(url: string): void {
