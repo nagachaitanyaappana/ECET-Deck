@@ -21,6 +21,6 @@ COPY --from=build /app/target/app.jar app.jar
 EXPOSE 8080
 
 # Keep memory within Render's 512 MB ceiling and force IPv4 stack to prevent Supabase SSL handshake drops
-ENV JAVA_TOOL_OPTIONS="-Xmx350m -Xms200m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Djava.net.preferIPv4Stack=true"
+ENV JAVA_TOOL_OPTIONS="-Xmx350m -Xms200m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Djava.net.preferIPv4Stack=true -Djdk.tls.client.protocols=TLSv1.2,TLSv1.3 -Dhttps.protocols=TLSv1.2,TLSv1.3"
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
