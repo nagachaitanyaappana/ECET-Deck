@@ -2,59 +2,53 @@ package com.ecetdesk.api.user;
 
 import java.time.Instant;
 import java.util.UUID;
-import jakarta.persistence.*;
 
-@Entity
-@Table(name = "users", schema = "app")
 public class UserAccount {
-    @Id
-    @GeneratedValue
     private UUID id;
-
-    @Column(nullable = false, length = 320)
     private String email;
-
-    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
-
-    @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private UserRole role;
-
-    @Column(nullable = false)
     private boolean enabled = true;
-
-    @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = true;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
-    protected UserAccount() {}
+    public UserAccount() {}
 
     public UserAccount(String email, String passwordHash, String displayName, UserRole role) {
         this(email, passwordHash, displayName, role, true);
     }
 
     public UserAccount(String email, String passwordHash, String displayName, UserRole role, boolean emailVerified) {
-        this.email = email.trim().toLowerCase();
+        this.email = email != null ? email.trim().toLowerCase() : null;
         this.passwordHash = passwordHash;
-        this.displayName = displayName.trim();
+        this.displayName = displayName != null ? displayName.trim() : null;
         this.role = role;
         this.emailVerified = emailVerified;
     }
 
+    public UserAccount(UUID id, String email, String passwordHash, String displayName, UserRole role,
+                       boolean enabled, boolean emailVerified, Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.email = email != null ? email.trim().toLowerCase() : null;
+        this.passwordHash = passwordHash;
+        this.displayName = displayName != null ? displayName.trim() : null;
+        this.role = role;
+        this.enabled = enabled;
+        this.emailVerified = emailVerified;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
     public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
     public UserRole getRole() { return role; }
     public boolean isEnabled() { return enabled; }
     public boolean isEmailVerified() { return emailVerified; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }
