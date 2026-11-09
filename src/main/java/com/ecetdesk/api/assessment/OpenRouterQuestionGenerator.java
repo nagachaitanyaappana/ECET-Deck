@@ -138,8 +138,13 @@ public class OpenRouterQuestionGenerator {
                         "OpenRouter error: Your account has $0 balance or model '" + model + "' requires paid credits.");
             }
             if (code == 429) {
+                String responseBody = ex.getResponseBodyAsString();
+                if (responseBody != null && responseBody.contains("free-models-per-day")) {
+                    throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                            "OpenRouter daily free-tier limit reached (50 requests/day limit exceeded on this key). Please add a new OpenRouter API key in the Server Settings tab, or wait for the daily reset.");
+                }
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                        "OpenRouter rate limit reached. Please wait a moment and try again.");
+                        "OpenRouter rate limit reached. Please wait a moment and try again, or add a fresh API key in Server Settings.");
             }
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "OpenRouter API error (HTTP " + code + "): " + ex.getStatusText());

@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -123,15 +124,22 @@ public class AssessmentService {
         ExecutorService pool = Executors.newFixedThreadPool(4);
         int added = 0;
         try {
+            AtomicInteger threadIndex = new AtomicInteger(0);
             List<CompletableFuture<Void>> futures = blueprint.entrySet().stream()
-                .map(entry -> CompletableFuture.runAsync(() -> {
-                    String subject = entry.getKey();
-                    int target = entry.getValue();
-                    List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
-                        generator.generate(subject, target, r.instructions());
-                    generatedBySubjectList.put(subject, generated);
-                    generatedCounts.put(subject, generated.size());
-                }, pool))
+                .map(entry -> {
+                    int delay = threadIndex.getAndIncrement() * 1000;
+                    return CompletableFuture.runAsync(() -> {
+                        if (delay > 0) {
+                            try { Thread.sleep(delay); } catch (InterruptedException ignored) {}
+                        }
+                        String subject = entry.getKey();
+                        int target = entry.getValue();
+                        List<OpenRouterQuestionGenerator.GeneratedQuestion> generated =
+                            generator.generate(subject, target, r.instructions());
+                        generatedBySubjectList.put(subject, generated);
+                        generatedCounts.put(subject, generated.size());
+                    }, pool);
+                })
                 .toList();
 
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

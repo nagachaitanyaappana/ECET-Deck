@@ -143,9 +143,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     } catch {}
   };
 
-  const loadTabContent = async () => {
+  const loadTabContent = async (arg?: boolean | { preserveMessage?: boolean } | unknown) => {
+    const preserve = typeof arg === 'object' && arg !== null && 'preserveMessage' in arg
+      ? Boolean((arg as any).preserveMessage)
+      : arg === false;
     setLoading(true);
-    setMessage(null);
+    if (!preserve) setMessage(null);
     try {
       if (tab === 'tests') {
         const tests = await apiRequest<any[]>('/api/v1/admin/tests');
@@ -276,7 +279,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         text: res.message || `Successfully generated and published ${res.title} with ${res.questionCount} questions!`,
       });
       setCustomTitle('');
-      await loadTabContent();
+      await loadTabContent(false);
     } catch (err: any) {
       setMessage({
         type: 'error',
@@ -296,7 +299,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
     try {
       await apiRequest(`/api/v1/admin/tests/${testId}`, { method: 'DELETE' });
       setMessage({ type: 'success', text: `Deleted "${testTitle}" successfully.` });
-      await loadTabContent();
+      await loadTabContent(false);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to delete test.' });
     } finally {
@@ -316,7 +319,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         type: 'success',
         text: `Success! Added ${res.questionsAdded} AI questions across subjects. You can now publish it.`,
       });
-      loadTabContent();
+      loadTabContent(false);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'AI Question Generation failed.' });
     } finally {
@@ -332,7 +335,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
         method: 'POST',
       });
       setMessage({ type: 'success', text: 'Test successfully published for students!' });
-      loadTabContent();
+      loadTabContent(false);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to publish test.' });
     } finally {
@@ -793,6 +796,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReviewAttempt 
                 <p className="text-sm sm:text-base text-slate-500 mb-5 leading-relaxed">
                   Click a button to generate complete questions with conceptual explanations across DCME, Math, Physics, and Chemistry, and automatically publish them live for students.
                 </p>
+
+                {/* Inline Generation Result / Error Notification Banner */}
+                {message && (
+                  <div
+                    className={`mb-5 p-4 rounded-xl flex items-start justify-between gap-3 text-sm shadow-xs ${
+                      message.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-red-50 text-red-800 border border-red-200'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      {message.type === 'success' ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className="font-bold text-sm">
+                          {message.type === 'success' ? 'Test Generated Successfully' : 'Paper Generation Failed'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-700 leading-relaxed">{message.text}</p>
+                        {message.text.includes('Server Settings') && (
+                          <button
+                            type="button"
+                            onClick={() => setTab('settings')}
+                            className="mt-2 text-xs font-bold text-blue-700 hover:text-blue-900 underline flex items-center gap-1 cursor-pointer"
+                          >
+                            Go to Server Settings to configure OpenRouter API Key &rarr;
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMessage(null)}
+                      className="text-xs text-slate-400 hover:text-slate-600 px-1 py-0.5 font-semibold cursor-pointer shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
 
                 {/* Real-time Generation Progress & Estimated Time Indicator */}
                 {generatingType && (
