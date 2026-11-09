@@ -3,6 +3,7 @@ import { apiRequest } from '../../api/client';
 import type { AvailableTest, StudentResultSummary, GrandTestRequest, FeedbackItem } from '../../types';
 import { PyqStudentPanel } from './PyqStudentPanel';
 import { StudentAnalyticsPanel } from './StudentAnalyticsPanel';
+import { PracticeDrillView } from './PracticeDrillView';
 import {
   Clock,
   CheckCircle2,
@@ -17,7 +18,8 @@ import {
   MessageSquare,
   Send,
   Sparkles,
-  Mail
+  Mail,
+  Layers
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -29,7 +31,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onStartTest,
   onReviewAttempt,
 }) => {
-  const [tab, setTab] = useState<'available' | 'pyq' | 'results' | 'analytics' | 'request' | 'feedback'>('available');
+  const [tab, setTab] = useState<'available' | 'practice' | 'pyq' | 'results' | 'analytics' | 'request' | 'feedback'>('available');
   const [tests, setTests] = useState<AvailableTest[]>([]);
   const [results, setResults] = useState<StudentResultSummary[]>([]);
   const [requests, setRequests] = useState<GrandTestRequest[]>([]);
@@ -182,6 +184,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </button>
 
         <button
+          onClick={() => setTab('practice')}
+          className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${
+            tab === 'practice'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-indigo-500" />
+          Subject & Topic Drills
+        </button>
+
+        <button
           onClick={() => setTab('pyq')}
           className={`pb-3.5 px-3.5 min-h-12 text-sm sm:text-base font-semibold border-b-2 flex items-center gap-2 cursor-pointer transition-colors whitespace-nowrap ${tab === 'pyq' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
         >
@@ -264,6 +278,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
               Check back later for today's daily mock or when an admin publishes a grand test.
             </p>
+            <button
+              onClick={() => setTab('practice')}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Practice by Subject or Topic Instead
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2">
@@ -324,6 +346,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             ))}
           </div>
         )
+      ) : tab === 'practice' ? (
+        <PracticeDrillView />
       ) : tab === 'pyq' ? (
         <PyqStudentPanel />
       ) : tab === 'analytics' ? (

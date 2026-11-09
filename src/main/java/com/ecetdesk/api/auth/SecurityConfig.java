@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET,"/api/v1/pyq/papers").hasAnyRole("STUDENT","ADMIN")
                 .requestMatchers("/api/v1/pyq/**").hasRole("STUDENT")
+                .requestMatchers("/api/v1/practice/**").hasAnyRole("STUDENT","ADMIN")
                 .requestMatchers("/api/v1/my/**").hasRole("STUDENT").anyRequest().authenticated())
             .addFilterBefore(jwtFilter,UsernamePasswordAuthenticationFilter.class).build();
     }
